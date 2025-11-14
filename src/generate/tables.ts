@@ -1,13 +1,7 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as pg from "pg";
-import { tsTypeForPgType } from "./pgTypes";
+import { tsTypeForPgType } from "./pg-types";
 import type { EnumData } from "./enums";
-import type { CustomTypes } from "./tsOutput";
+import type { CustomTypes } from "./ts-output";
 import { CompleteConfig } from "./config";
 
 export interface Relation {
@@ -121,9 +115,7 @@ export const definitionForRelationInSchema = async (
     const columnDoc = createColumnDoc(config, schemaName, rel, row),
       schemaPrefix = config.unprefixedSchema === schemaName ? "" : `${schemaName}.`,
       prefixedRelName = schemaPrefix + rel.name,
-      columnOptions =
-        (config.columnOptions[prefixedRelName] && config.columnOptions[prefixedRelName][column]) ??
-        (config.columnOptions["*"] && config.columnOptions["*"][column]),
+      columnOptions = (config.columnOptions[prefixedRelName] && config.columnOptions[prefixedRelName][column]) ?? (config.columnOptions["*"] && config.columnOptions["*"][column]),
       isInsertable = rel.insertable && !isGenerated && columnOptions?.insert !== "excluded",
       isUpdatable = rel.insertable && !isGenerated && columnOptions?.update !== "excluded",
       insertablyOptional = isNullable || hasDefault || columnOptions?.insert === "optional" ? "?" : "",

@@ -1,11 +1,5 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as pg from "pg";
-import { isDatabaseError } from "./pgErrors";
+import { isDatabaseError } from "./pg-errors";
 import { wait } from "./utils";
 import { sql, raw } from "./core";
 import { getConfig } from "./config";
@@ -28,14 +22,8 @@ export type IsolationSatisfying<T extends IsolationLevel> = {
   [IsolationLevel.RepeatableRead]: IsolationSatisfying<IsolationLevel.Serializable> | IsolationLevel.RepeatableRead;
   [IsolationLevel.ReadCommitted]: IsolationSatisfying<IsolationLevel.RepeatableRead> | IsolationLevel.ReadCommitted;
   [IsolationLevel.SerializableRO]: IsolationSatisfying<IsolationLevel.Serializable> | IsolationLevel.SerializableRO;
-  [IsolationLevel.RepeatableReadRO]:
-    | IsolationSatisfying<IsolationLevel.SerializableRO>
-    | IsolationSatisfying<IsolationLevel.RepeatableRead>
-    | IsolationLevel.RepeatableReadRO;
-  [IsolationLevel.ReadCommittedRO]:
-    | IsolationSatisfying<IsolationLevel.RepeatableReadRO>
-    | IsolationSatisfying<IsolationLevel.ReadCommitted>
-    | IsolationLevel.ReadCommittedRO;
+  [IsolationLevel.RepeatableReadRO]: IsolationSatisfying<IsolationLevel.SerializableRO> | IsolationSatisfying<IsolationLevel.RepeatableRead> | IsolationLevel.RepeatableReadRO;
+  [IsolationLevel.ReadCommittedRO]: IsolationSatisfying<IsolationLevel.RepeatableReadRO> | IsolationSatisfying<IsolationLevel.ReadCommitted> | IsolationLevel.ReadCommittedRO;
   [IsolationLevel.SerializableRODeferrable]: IsolationSatisfying<IsolationLevel.SerializableRO> | IsolationLevel.SerializableRODeferrable;
 }[T];
 
@@ -129,8 +117,7 @@ export async function transaction<T, M extends IsolationLevel>(
         if (isDatabaseError(err, "TransactionRollback_SerializationFailure", "TransactionRollback_DeadlockDetected")) {
           if (attempt < maxAttempts) {
             const delayBeforeRetry = Math.round(minMs + (maxMs - minMs) * Math.random());
-            if (transactionListener)
-              transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
+            if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
             await wait(delayBeforeRetry);
           } else {
             if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, giving up`, txnId);
@@ -164,10 +151,7 @@ export async function serializable<T>(txnClientOrQueryable: Queryable | TxnClien
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function repeatableRead<T>(
-  txnClientOrQueryable: Queryable | TxnClientForRepeatableRead,
-  callback: (client: TxnClientForRepeatableRead) => Promise<T>,
-) {
+export async function repeatableRead<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableRead, callback: (client: TxnClientForRepeatableRead) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableRead, callback);
 }
 /**
@@ -177,10 +161,7 @@ export async function repeatableRead<T>(
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function readCommitted<T>(
-  txnClientOrQueryable: Queryable | TxnClientForReadCommitted,
-  callback: (client: TxnClientForReadCommitted) => Promise<T>,
-) {
+export async function readCommitted<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommitted, callback: (client: TxnClientForReadCommitted) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommitted, callback);
 }
 /**
@@ -190,10 +171,7 @@ export async function readCommitted<T>(
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function serializableRO<T>(
-  txnClientOrQueryable: Queryable | TxnClientForSerializableRO,
-  callback: (client: TxnClientForSerializableRO) => Promise<T>,
-) {
+export async function serializableRO<T>(txnClientOrQueryable: Queryable | TxnClientForSerializableRO, callback: (client: TxnClientForSerializableRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.SerializableRO, callback);
 }
 /**
@@ -203,10 +181,7 @@ export async function serializableRO<T>(
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function repeatableReadRO<T>(
-  txnClientOrQueryable: Queryable | TxnClientForRepeatableReadRO,
-  callback: (client: TxnClientForRepeatableReadRO) => Promise<T>,
-) {
+export async function repeatableReadRO<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableReadRO, callback: (client: TxnClientForRepeatableReadRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableReadRO, callback);
 }
 /**
@@ -216,10 +191,7 @@ export async function repeatableReadRO<T>(
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function readCommittedRO<T>(
-  txnClientOrQueryable: Queryable | TxnClientForReadCommittedRO,
-  callback: (client: TxnClientForReadCommittedRO) => Promise<T>,
-) {
+export async function readCommittedRO<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommittedRO, callback: (client: TxnClientForReadCommittedRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommittedRO, callback);
 }
 /**
@@ -229,9 +201,6 @@ export async function readCommittedRO<T>(
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function serializableRODeferrable<T>(
-  txnClientOrQueryable: Queryable | TxnClientForSerializableRODeferrable,
-  callback: (client: TxnClientForSerializableRODeferrable) => Promise<T>,
-) {
+export async function serializableRODeferrable<T>(txnClientOrQueryable: Queryable | TxnClientForSerializableRODeferrable, callback: (client: TxnClientForSerializableRODeferrable) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.SerializableRODeferrable, callback);
 }

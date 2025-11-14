@@ -1,9 +1,3 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import type {
   JSONSelectableForTable,
   WhereableForTable,
@@ -23,10 +17,10 @@ import { AllType, all, SQL, SQLFragment, sql, cols, vals, raw, param, Default } 
 
 import { completeKeysWithDefaultValue, mapWithSeparator, NoInfer } from "./utils";
 
-export type JSONOnlyColsForTable<
-  T extends Table,
-  C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */,
-> = Pick<JSONSelectableForTable<T>, C[number]>;
+export type JSONOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
+  JSONSelectableForTable<T>,
+  C[number]
+>;
 
 export interface SQLFragmentMap {
   [k: string]: SQLFragment<any>;
@@ -34,21 +28,13 @@ export interface SQLFragmentMap {
 export interface SQLFragmentOrColumnMap<T extends Table> {
   [k: string]: SQLFragment<any> | ColumnForTable<T>;
 }
-export type RunResultForSQLFragment<T extends SQLFragment<any, any>> = T extends SQLFragment<infer RunResult, any>
-  ? undefined extends RunResult
-    ? NonNullable<RunResult> | null
-    : RunResult
-  : never;
+export type RunResultForSQLFragment<T extends SQLFragment<any, any>> = T extends SQLFragment<infer RunResult, any> ? (undefined extends RunResult ? NonNullable<RunResult> | null : RunResult) : never;
 
 export type LateralResult<L extends SQLFragmentMap> = {
   [K in keyof L]: RunResultForSQLFragment<L[K]>;
 };
 export type ExtrasResult<T extends Table, E extends SQLFragmentOrColumnMap<T>> = {
-  [K in keyof E]: E[K] extends SQLFragment<any>
-    ? RunResultForSQLFragment<E[K]>
-    : E[K] extends keyof JSONSelectableForTable<T>
-      ? JSONSelectableForTable<T>[E[K]]
-      : never;
+  [K in keyof E]: E[K] extends SQLFragment<any> ? RunResultForSQLFragment<E[K]> : E[K] extends keyof JSONSelectableForTable<T> ? JSONSelectableForTable<T>[E[K]] : never;
 };
 
 export type ExtrasOption<T extends Table> = SQLFragmentOrColumnMap<T> | undefined;
@@ -75,15 +61,11 @@ type ReturningTypeForTable<T extends Table, C extends ColumnsOption<T>, E extend
   (undefined extends E ? {} : E extends SQLFragmentOrColumnMap<T> ? ExtrasResult<T, E> : never);
 
 function SQLForColumnsOfTable(columns: readonly Column[] | undefined, table: Table) {
-  return columns === undefined
-    ? sql`to_jsonb(${table}.*)`
-    : sql`jsonb_build_object(${mapWithSeparator(columns, sql`, `, (c) => sql`${param(c)}::text, ${c}`)})`;
+  return columns === undefined ? sql`to_jsonb(${table}.*)` : sql`jsonb_build_object(${mapWithSeparator(columns, sql`, `, (c) => sql`${param(c)}::text, ${c}`)})`;
 }
 
 function SQLForExtras<T extends Table>(extras: ExtrasOption<T>) {
-  return extras === undefined
-    ? []
-    : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(extras), sql`, `, (k) => sql`${param(k)}::text, ${extras[k]}`)})`;
+  return extras === undefined ? [] : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(extras), sql`, `, (k) => sql`${param(k)}::text, ${extras[k]}`)})`;
 }
 
 /* === insert === */
@@ -120,9 +102,7 @@ export const insert: InsertSignatures = function (
   } else {
     const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : values,
       colsSQL = cols(Array.isArray(completedValues) ? completedValues[0] : completedValues),
-      valuesSQL = Array.isArray(completedValues)
-        ? mapWithSeparator(completedValues as Insertable[], sql`, `, (v) => sql`(${vals(v)})`)
-        : sql`(${vals(completedValues)})`,
+      valuesSQL = Array.isArray(completedValues) ? mapWithSeparator(completedValues as Insertable[], sql`, `, (v) => sql`(${vals(v)})`) : sql`(${vals(completedValues)})`,
       returningSQL = SQLForColumnsOfTable(options?.returning, table),
       extrasSQL = SQLForExtras(options?.extras);
 
@@ -156,23 +136,14 @@ export interface UpsertAction {
 }
 
 type UpsertReportAction = "suppress";
-type UpsertReturnableForTable<
-  T extends Table,
-  C extends ColumnsOption<T>,
-  E extends ExtrasOption<T>,
-  RA extends UpsertReportAction | undefined,
-> = ReturningTypeForTable<T, C, E> & (undefined extends RA ? UpsertAction : {});
+type UpsertReturnableForTable<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, RA extends UpsertReportAction | undefined> = ReturningTypeForTable<T, C, E> &
+  (undefined extends RA ? UpsertAction : {});
 
 type UpsertConflictTargetForTable<T extends Table> = Constraint<T> | ColumnForTable<T> | ColumnForTable<T>[];
 type UpdateColumns<T extends Table> = ColumnForTable<T> | ColumnForTable<T>[];
 
-interface UpsertOptions<
-  T extends Table,
-  C extends ColumnsOption<T>,
-  E extends ExtrasOption<T>,
-  UC extends UpdateColumns<T> | undefined,
-  RA extends UpsertReportAction | undefined,
-> extends ReturningOptionsForTable<T, C, E> {
+interface UpsertOptions<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, UC extends UpdateColumns<T> | undefined, RA extends UpsertReportAction | undefined>
+  extends ReturningOptionsForTable<T, C, E> {
   updateValues?: UpdatableForTable<T>;
   updateColumns?: UC;
   noNullUpdateColumns?: ColumnForTable<T> | ColumnForTable<T>[] | typeof all;
@@ -236,9 +207,7 @@ export const upsert: UpsertSignatures = function (
         [...((specifiedUpdateColumns as string[]) ?? colNames), ...Object.keys(updateValues)],
       ),
     ],
-    conflictTargetSQL = Array.isArray(conflictTarget)
-      ? sql`(${mapWithSeparator(conflictTarget, sql`, `, (c) => c)})`
-      : sql<string>`ON CONSTRAINT ${conflictTarget.value}`,
+    conflictTargetSQL = Array.isArray(conflictTarget) ? sql`(${mapWithSeparator(conflictTarget, sql`, `, (c) => c)})` : sql<string>`ON CONSTRAINT ${conflictTarget.value}`,
     updateColsSQL = mapWithSeparator(updateColumns, sql`, `, (c) => c),
     updateValuesSQL = mapWithSeparator(updateColumns, sql`, `, (c) =>
       updateValues[c] !== undefined
@@ -370,13 +339,7 @@ export interface SelectLockingOptions<A extends string> {
   wait?: "NOWAIT" | "SKIP LOCKED";
 }
 
-export interface SelectOptionsForTable<
-  T extends Table,
-  C extends ColumnsOption<T>,
-  L extends LateralOption<C, E>,
-  E extends ExtrasOption<T>,
-  A extends string,
-> {
+export interface SelectOptionsForTable<T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string> {
   distinct?: boolean | ColumnForTable<T> | ColumnForTable<T>[] | SQLFragment<any>;
   order?: OrderSpecForTable<T> | OrderSpecForTable<T>[];
   limit?: number;
@@ -406,13 +369,7 @@ export enum SelectResultMode {
   Numeric,
 }
 
-export type FullSelectReturnTypeForTable<
-  T extends Table,
-  C extends ColumnsOption<T>,
-  L extends LateralOption<C, E>,
-  E extends ExtrasOption<T>,
-  M extends SelectResultMode,
-> = {
+export type FullSelectReturnTypeForTable<T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, M extends SelectResultMode> = {
   [SelectResultMode.Many]: SelectReturnTypeForTable<T, C, L, E>[];
   [SelectResultMode.ExactlyOne]: SelectReturnTypeForTable<T, C, L, E>;
   [SelectResultMode.One]: SelectReturnTypeForTable<T, C, L, E> | undefined;
@@ -420,14 +377,7 @@ export type FullSelectReturnTypeForTable<
 }[M];
 
 export interface SelectSignatures {
-  <
-    T extends Table,
-    C extends ColumnsOption<T>,
-    L extends LateralOption<C, E>,
-    E extends ExtrasOption<T>,
-    A extends string = never,
-    M extends SelectResultMode = SelectResultMode.Many,
-  >(
+  <T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string = never, M extends SelectResultMode = SelectResultMode.Many>(
     table: T,
     where: WhereableForTable<T> | SQLFragment<any> | AllType,
     options?: SelectOptionsForTable<T, C, L, E, A>,
@@ -484,9 +434,7 @@ export const select: SelectSignatures = function (
     tableAliasSQL = alias === table ? [] : sql<string>` AS ${alias}`,
     distinctSQL = !distinct
       ? []
-      : sql` DISTINCT${
-          distinct instanceof SQLFragment || typeof distinct === "string" ? sql` ON (${distinct})` : Array.isArray(distinct) ? sql` ON (${cols(distinct)})` : []
-        }`,
+      : sql` DISTINCT${distinct instanceof SQLFragment || typeof distinct === "string" ? sql` ON (${distinct})` : Array.isArray(distinct) ? sql` ON (${cols(distinct)})` : []}`,
     colsSQL =
       lateral instanceof SQLFragment
         ? []
@@ -515,12 +463,7 @@ export const select: SelectSignatures = function (
             if (o.nulls && !["FIRST", "LAST"].includes(o.nulls)) throw new Error(`Nulls must be FIRST/LAST/undefined, not '${o.nulls}'`);
             return sql`${o.by} ${raw(o.direction)}${o.nulls ? sql` NULLS ${raw(o.nulls)}` : []}`;
           })}`,
-    limitSQL =
-      allOptions.limit === undefined
-        ? []
-        : allOptions.withTies
-          ? sql` FETCH FIRST ${param(allOptions.limit)} ROWS WITH TIES`
-          : sql` LIMIT ${param(allOptions.limit)}`, // compatibility with pg pre-10.5; and fewer bytes!
+    limitSQL = allOptions.limit === undefined ? [] : allOptions.withTies ? sql` FETCH FIRST ${param(allOptions.limit)} ROWS WITH TIES` : sql` LIMIT ${param(allOptions.limit)}`, // compatibility with pg pre-10.5; and fewer bytes!
     offsetSQL = allOptions.offset === undefined ? [] : sql` OFFSET ${param(allOptions.offset)}`, // pg is lax about OFFSET following FETCH, and we exploit that
     lockSQL =
       lock === undefined
@@ -564,8 +507,7 @@ export const select: SelectSignatures = function (
       : mode === SelectResultMode.ExactlyOne
         ? (qr) => {
             const result = qr.rows[0]?.result;
-            if (result === undefined)
-              throw new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)");
+            if (result === undefined) throw new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)");
             return result;
           }
         : // SelectResultMode.One or SelectResultMode.Many

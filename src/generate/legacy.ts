@@ -1,16 +1,9 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as path from "path";
 import * as fs from "fs";
 
 import { CompleteConfig } from "./config";
 
-const recurseNodes = (node: string): string[] =>
-  fs.statSync(node).isFile() ? [node] : fs.readdirSync(node).reduce<string[]>((memo, n) => memo.concat(recurseNodes(path.join(node, n))), []);
+const recurseNodes = (node: string): string[] => (fs.statSync(node).isFile() ? [node] : fs.readdirSync(node).reduce<string[]>((memo, n) => memo.concat(recurseNodes(path.join(node, n))), []));
 
 export function srcWarning(config: CompleteConfig) {
   if (config.outExt === ".ts") return; // if .ts extension is explicitly set, our legacy detection code fails

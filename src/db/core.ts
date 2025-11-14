@@ -1,9 +1,3 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import type * as pg from "pg";
 
 import { getConfig, SQLQuery } from "./config";
@@ -215,14 +209,7 @@ export function parent<T extends Column | undefined = Column | undefined>(x?: T)
 }
 
 export type GenericSQLExpression = SQLFragment<any, any> | Parameter | DefaultType | DangerousRawString | SelfType;
-export type SQLExpression =
-  | Table
-  | ColumnNames<Updatable | (keyof Updatable)[]>
-  | ColumnValues<Updatable | any[]>
-  | Whereable
-  | Column
-  | ParentColumn
-  | GenericSQLExpression;
+export type SQLExpression = Table | ColumnNames<Updatable | (keyof Updatable)[]> | ColumnValues<Updatable | any[]> | Whereable | Column | ParentColumn | GenericSQLExpression;
 export type SQL = SQLExpression | SQLExpression[];
 
 export type Queryable = pg.ClientBase | pg.Pool;
@@ -235,10 +222,7 @@ export type Queryable = pg.ClientBase | pg.Pool;
  * defines what type the `SQLFragment` produces, where relevant (i.e. when
  * calling `.run(...)` on it, or using it as the value of an `extras` object).
  */
-export function sql<Interpolations = SQL, RunResult = pg.QueryResult["rows"], Constraint = never>(
-  literals: TemplateStringsArray,
-  ...expressions: NoInfer<Interpolations>[]
-) {
+export function sql<Interpolations = SQL, RunResult = pg.QueryResult["rows"], Constraint = never>(literals: TemplateStringsArray, ...expressions: NoInfer<Interpolations>[]) {
   return new SQLFragment<RunResult, Constraint>(Array.prototype.slice.apply(literals), expressions as SQL[]);
 }
 
@@ -270,14 +254,7 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
    * Performs a shallow copy of this SQLFragment, optionally overriding some of its properties.
    * @param override The properties to override
    */
-  copy(override?: {
-    literals?: string[];
-    expressions?: SQL[];
-    parentTable?: string;
-    preparedName?: string;
-    noop?: boolean;
-    noopResult?: any;
-  }): SQLFragment<RunResult, Constraint> {
+  copy(override?: { literals?: string[]; expressions?: SQL[]; parentTable?: string; preparedName?: string; noop?: boolean; noopResult?: any }): SQLFragment<RunResult, Constraint> {
     const { literals = this.literals, expressions = this.expressions, ...overrideRest } = override ?? {};
     const copy = new SQLFragment<RunResult, Constraint>(literals, expressions);
     return Object.assign(
@@ -317,6 +294,7 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
     if (queryListener) queryListener(query, txnId);
 
     let startMs: number | undefined, result;
+
     if (resultListener) startMs = timing();
 
     if (!this.noop || force) {
@@ -425,16 +403,12 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
           const columnName = columnNames[i],
             columnValue = columnValues[i];
           if (i > 0) result.text += ", ";
-          if (columnValue instanceof SQLFragment || columnValue instanceof Parameter || columnValue === Default)
-            this.compileExpression(columnValue, result, parentTable, columnName);
+          if (columnValue instanceof SQLFragment || columnValue instanceof Parameter || columnValue === Default) this.compileExpression(columnValue, result, parentTable, columnName);
           else this.compileExpression(new Parameter(columnValue), result, parentTable, columnName);
         }
       }
     } else if (typeof expression === "object") {
-      if (expression === globalThis)
-        throw new Error(
-          "Did you use `self` (the global object) where you meant `db.self` (the Zapatos value)? The global object cannot be embedded in a query.",
-        );
+      if (expression === globalThis) throw new Error("Did you use `self` (the global object) where you meant `db.self` (the Zapatos value)? The global object cannot be embedded in a query.");
 
       // must be a Whereable object, so put together a WHERE clause
       const columnNames = <Column[]>Object.keys(expression).sort();

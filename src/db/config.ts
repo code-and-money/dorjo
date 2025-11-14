@@ -1,9 +1,3 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 export interface SQLQuery {
   text: string;
   values: any[];

@@ -1,14 +1,8 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as fs from "fs";
 import * as path from "path";
 import { finaliseConfig, Config } from "./config";
 import * as legacy from "./legacy";
-import { tsForConfig } from "./tsOutput";
+import { tsForConfig } from "./ts-output";
 import { header } from "./header";
 
 /**

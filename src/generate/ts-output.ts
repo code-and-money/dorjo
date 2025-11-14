@@ -1,23 +1,10 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as pg from "pg";
 
 import { enumDataForSchema, enumTypesForEnumData } from "./enums";
 import { header } from "./header";
 import type { CompleteConfig } from "./config";
 import type { SchemaVersionCanary } from "../db/canary";
-import {
-  Relation,
-  relationsInSchema,
-  definitionForRelationInSchema,
-  crossTableTypesForTables,
-  crossSchemaTypesForAllTables,
-  crossSchemaTypesForSchemas,
-} from "./tables";
+import { Relation, relationsInSchema, definitionForRelationInSchema, crossTableTypesForTables, crossSchemaTypesForAllTables, crossSchemaTypesForSchemas } from "./tables";
 
 export interface CustomTypes {
   [name: string]: string; // any, or TS type for domain's base type
@@ -48,8 +35,7 @@ const sourceFilesForCustomTypes = (customTypes: CustomTypes) =>
       customTypeHeader +
         declareModule(
           "zapatos/custom",
-          (baseType === "db.JSONValue" ? `import type * as db from 'zapatos/db';\n` : ``) +
-            `export type ${name} = ${baseType};  // replace with your custom type or interface as desired`,
+          (baseType === "db.JSONValue" ? `import type * as db from 'zapatos/db';\n` : ``) + `export type ${name} = ${baseType};  // replace with your custom type or interface as desired`,
         ),
     ]),
   );
@@ -100,9 +86,7 @@ export const tsForConfig = async (config: CompleteConfig, debug: (s: string) => 
                 `\n\n/* --- tables --- */\n` +
                 (tableDefs.join("\n") || none) +
                 `\n\n/* --- aggregate types --- */\n` +
-                (schemaIsUnprefixed
-                  ? `\nexport namespace ${schema} {` + indentAll(2, crossTableTypesForTables(tables) || none) + "\n}\n"
-                  : crossTableTypesForTables(tables) || none),
+                (schemaIsUnprefixed ? `\nexport namespace ${schema} {` + indentAll(2, crossTableTypesForTables(tables) || none) + "\n}\n" : crossTableTypesForTables(tables) || none),
             ) +
             "\n" +
             (schemaIsUnprefixed ? "" : `}\n`);

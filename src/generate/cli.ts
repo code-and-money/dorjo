@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 // ^^ this shebang is for the compiled JS file, not the TS source
 
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as fs from "fs";
 import { generate } from ".";
 import type { Config } from "./config";

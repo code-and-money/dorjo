@@ -1,9 +1,3 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 export type NoInfer<T> = [T][T extends any ? 0 : never]; // https://github.com/Microsoft/TypeScript/issues/14829
 
 /**
@@ -29,11 +23,7 @@ export const wait = (delayMs: number) => new Promise((resolve) => setTimeout(res
  * @param separator Separator value
  * @param cb Mapping function
  */
-export const mapWithSeparator = <TIn, TSep, TOut>(
-  arr: readonly TIn[],
-  separator: TSep,
-  cb: (x: TIn, i: number, a: readonly TIn[]) => TOut,
-): (TOut | TSep)[] => {
+export const mapWithSeparator = <TIn, TSep, TOut>(arr: readonly TIn[], separator: TSep, cb: (x: TIn, i: number, a: readonly TIn[]) => TOut): (TOut | TSep)[] => {
   const result: (TOut | TSep)[] = [];
   for (let i = 0, len = arr.length; i < len; i++) {
     if (i > 0) result.push(separator);

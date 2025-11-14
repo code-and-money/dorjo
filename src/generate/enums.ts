@@ -1,16 +1,10 @@
-/*
-Zapatos: https://jawj.github.io/zapatos/
-Copyright (C) 2020 - 2023 George MacKerron
-Released under the MIT licence: see LICENCE file
-*/
-
 import * as pg from "pg";
 
 export type EnumData = { [k: string]: string[] };
 
 export const enumDataForSchema = async (schemaName: string, queryFn: (q: pg.QueryConfig) => Promise<pg.QueryResult<any>>) => {
   const { rows } = await queryFn({
-      text: `
+    text: `
         SELECT
           n.nspname AS schema
         , t.typname AS name
@@ -20,13 +14,15 @@ export const enumDataForSchema = async (schemaName: string, queryFn: (q: pg.Quer
         JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
         WHERE n.nspname = $1
         ORDER BY t.typname ASC, e.enumlabel ASC`,
-      values: [schemaName],
-    }),
-    enums: EnumData = rows.reduce((memo, row) => {
-      memo[row.name] = memo[row.name] ?? [];
-      memo[row.name].push(row.value);
-      return memo;
-    }, {});
+    values: [schemaName],
+  });
+
+  const enums: EnumData = rows.reduce((memo, row) => {
+    memo[row.name] = memo[row.name] ?? [];
+    memo[row.name].push(row.value);
+
+    return memo;
+  }, {});
 
   return enums;
 };
