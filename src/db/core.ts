@@ -1,9 +1,9 @@
 import type * as pg from "pg";
 
-import { getConfig, type SQLQuery } from "./config";
+import { getConfig, type SqlQuery } from "./config";
 import { isPOJO, type NoInfer } from "./utils";
 
-import type { Updatable, Whereable, Table, Column } from "zapatos/schema";
+import type { Updatable, Whereable, Table, Column } from "zbs/schema";
 
 const timing = typeof performance === "object" ? () => performance.now() : () => Date.now();
 
@@ -30,9 +30,9 @@ export type AllType = typeof all;
 /**
  * JSON types
  */
-export type JSONValue = null | boolean | number | string | JSONObject | JSONArray;
-export type JSONObject = { [k: string]: JSONValue };
-export type JSONArray = JSONValue[];
+export type JsonValue = null | boolean | number | string | JsonObject | JsonArray;
+export type JsonObject = { [k: string]: JsonValue };
+export type JsonArray = JsonValue[];
 
 /**
  * `int8` or `numeric` value represented as a string
@@ -67,7 +67,7 @@ export type ByteArrayString = `\\x${string}`;
  * Make a function `STRICT` in the Postgres sense — where it's an alias for
  * `RETURNS NULL ON NULL INPUT` — with appropriate typing.
  *
- * For example, Zapatos' `toBuffer()` function is defined as:
+ * For example, Zbs' `toBuffer()` function is defined as:
  *
  * ```
  * export const toBuffer = strict((ba: ByteArrayString) => Buffer.from(ba.slice(2), 'hex'));
@@ -138,7 +138,7 @@ export function param<T = any>(x: T, cast?: boolean | string) {
 /**
  * 💥💥💣 **DANGEROUS** 💣💥💥
  *
- * Compiles to the wrapped string value, as is, which may enable SQL injection
+ * Compiles to the wrapped string value, as is, which may enable Sql injection
  * attacks.
  */
 export class DangerousRawString {
@@ -153,7 +153,7 @@ export class DangerousRawString {
  * ---
  * Returns a `DangerousRawString` instance, wrapping a string.
  * `DangerousRawString` compiles to the wrapped string value, as-is, which may
- * enable SQL injection attacks.
+ * enable Sql injection attacks.
  */
 export function raw(x: string) {
   return new DangerousRawString(x);
@@ -208,27 +208,27 @@ export function parent<T extends Column | undefined = Column | undefined>(x?: T)
   return new ParentColumn<T>(x);
 }
 
-export type GenericSQLExpression = SQLFragment<any, any> | Parameter | DefaultType | DangerousRawString | SelfType;
-export type SQLExpression = Table | ColumnNames<Updatable | (keyof Updatable)[]> | ColumnValues<Updatable | any[]> | Whereable | Column | ParentColumn | GenericSQLExpression;
-export type SQL = SQLExpression | SQLExpression[];
+export type GenericSqlExpression = SqlFragment<any, any> | Parameter | DefaultType | DangerousRawString | SelfType;
+export type SqlExpression = Table | ColumnNames<Updatable | (keyof Updatable)[]> | ColumnValues<Updatable | any[]> | Whereable | Column | ParentColumn | GenericSqlExpression;
+export type Sql = SqlExpression | SqlExpression[];
 
 export type Queryable = pg.ClientBase | pg.Pool;
 
-// === SQL tagged template strings ===
+// === Sql tagged template strings ===
 
 /**
- * Tagged template function returning a `SQLFragment`. The first generic type
+ * Tagged template function returning a `SqlFragment`. The first generic type
  * argument defines what interpolated value types are allowed. The second
- * defines what type the `SQLFragment` produces, where relevant (i.e. when
+ * defines what type the `SqlFragment` produces, where relevant (i.e. when
  * calling `.run(...)` on it, or using it as the value of an `extras` object).
  */
-export function sql<Interpolations = SQL, RunResult = pg.QueryResult["rows"], Constraint = never>(literals: TemplateStringsArray, ...expressions: NoInfer<Interpolations>[]) {
-  return new SQLFragment<RunResult, Constraint>(Array.prototype.slice.apply(literals), expressions as SQL[]);
+export function sql<Interpolations = Sql, RunResult = pg.QueryResult["rows"], Constraint = never>(literals: TemplateStringsArray, ...expressions: NoInfer<Interpolations>[]) {
+  return new SqlFragment<RunResult, Constraint>(Array.prototype.slice.apply(literals), expressions as Sql[]);
 }
 
 let preparedNameSeq = 0;
 
-export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never> {
+export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never> {
   protected constraint?: Constraint;
 
   /**
@@ -247,16 +247,16 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
 
   constructor(
     protected literals: string[],
-    protected expressions: SQL[],
+    protected expressions: Sql[],
   ) {}
 
   /**
-   * Performs a shallow copy of this SQLFragment, optionally overriding some of its properties.
+   * Performs a shallow copy of this SqlFragment, optionally overriding some of its properties.
    * @param override The properties to override
    */
-  copy(override?: { literals?: string[]; expressions?: SQL[]; parentTable?: string; preparedName?: string; noop?: boolean; noopResult?: any }): SQLFragment<RunResult, Constraint> {
+  copy(override?: { literals?: string[]; expressions?: Sql[]; parentTable?: string; preparedName?: string; noop?: boolean; noopResult?: any }): SqlFragment<RunResult, Constraint> {
     const { literals = this.literals, expressions = this.expressions, ...overrideRest } = override ?? {};
-    const copy = new SQLFragment<RunResult, Constraint>(literals, expressions);
+    const copy = new SqlFragment<RunResult, Constraint>(literals, expressions);
     return Object.assign(
       copy,
       {
@@ -273,9 +273,9 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
    * Instruct Postgres to treat this as a prepared statement: see
    * https://node-postgres.com/features/queries#prepared-statements
    * @param name A name for the prepared query. If not specified, it takes the
-   * value '_zapatos_prepared_N', where N is an increasing sequence number.
+   * value '_zbs_prepared_N', where N is an increasing sequence number.
    */
-  prepared = (name = `_zapatos_prepared_${preparedNameSeq++}`) => {
+  prepared = (name = `_zbs_prepared_${preparedNameSeq++}`) => {
     this.preparedName = name;
     return this;
   };
@@ -287,15 +287,19 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
    * @param force If true, force this query to hit the DB even if it's marked as a no-op
    */
   run = async (queryable: Queryable, force = false): Promise<RunResult> => {
-    const query = this.compile(),
-      { queryListener, resultListener } = getConfig(),
-      txnId = (queryable as any)._zapatos?.txnId;
+    const query = this.compile();
+    const { queryListener, resultListener } = getConfig();
+    const txnId = (queryable as any)._zbs?.txnId;
 
-    if (queryListener) queryListener(query, txnId);
+    if (queryListener) {
+      queryListener(query, txnId);
+    }
 
     let startMs: number | undefined, result;
 
-    if (resultListener) startMs = timing();
+    if (resultListener) {
+      startMs = timing();
+    }
 
     if (!this.noop || force) {
       const qr = await queryable.query(query);
@@ -304,7 +308,10 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       result = this.noopResult;
     }
 
-    if (resultListener) resultListener(result, txnId, timing() - startMs!, query);
+    if (resultListener) {
+      resultListener(result, txnId, timing() - startMs!, query);
+    }
+
     return result;
   };
 
@@ -313,7 +320,7 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
    * that could be passed to the `pg` query function. Arguments are generally
    * only passed when the function calls itself recursively.
    */
-  compile = (result: SQLQuery = { text: "", values: [] }, parentTable?: string, currentColumn?: Column) => {
+  compile = (result: SqlQuery = { text: "", values: [] }, parentTable?: string, currentColumn?: Column) => {
     if (this.parentTable) {
       parentTable = this.parentTable;
     }
@@ -321,9 +328,11 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
     if (this.noop) {
       result.text += "/* marked no-op: won't hit DB unless forced -> */ ";
     }
+
     result.text += this.literals[0];
+
     for (let i = 1, len = this.literals.length; i < len; i++) {
-      this.compileExpression(this.expressions[i - 1], result, parentTable, currentColumn);
+      this.compileExpression(this.expressions[i - 1]!, result, parentTable, currentColumn);
       result.text += this.literals[i];
     }
 
@@ -334,11 +343,11 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
     return result;
   };
 
-  compileExpression = (expression: SQL, result: SQLQuery = { text: "", values: [] }, parentTable?: string, currentColumn?: Column) => {
+  compileExpression = (expression: Sql, result: SqlQuery = { text: "", values: [] }, parentTable?: string, currentColumn?: Column) => {
     if (this.parentTable) parentTable = this.parentTable;
 
-    if (expression instanceof SQLFragment) {
-      // another SQL fragment? recursively compile this one
+    if (expression instanceof SqlFragment) {
+      // another Sql fragment? recursively compile this one
       expression.compile(result, parentTable, currentColumn);
     } else if (typeof expression === "string") {
       // if it's a string, it should be a x.Table or x.Column type, so just needs quoting
@@ -391,30 +400,42 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       }
     } else if (expression instanceof ColumnValues) {
       // a ColumnValues-wrapped object OR array
-      // -> values (in ColumnNames-matching order, if applicable) punted as SQLFragments or Parameters
+      // -> values (in ColumnNames-matching order, if applicable) punted as SqlFragments or Parameters
 
       if (Array.isArray(expression.value)) {
         const values: any[] = expression.value;
         for (let i = 0, len = values.length; i < len; i++) {
           const value = values[i];
-          if (i > 0) result.text += ", ";
-          if (value instanceof SQLFragment) this.compileExpression(value, result, parentTable);
-          else this.compileExpression(new Parameter(value), result, parentTable);
+
+          if (i > 0) {
+            result.text += ", ";
+          }
+
+          if (value instanceof SqlFragment) {
+            this.compileExpression(value, result, parentTable);
+          } else {
+            this.compileExpression(new Parameter(value), result, parentTable);
+          }
         }
       } else {
         const columnNames = <Column[]>Object.keys(expression.value).sort(),
           columnValues = columnNames.map((k) => (<any>expression.value)[k]);
 
         for (let i = 0, len = columnValues.length; i < len; i++) {
-          const columnName = columnNames[i],
-            columnValue = columnValues[i];
-          if (i > 0) result.text += ", ";
-          if (columnValue instanceof SQLFragment || columnValue instanceof Parameter || columnValue === Default) this.compileExpression(columnValue, result, parentTable, columnName);
-          else this.compileExpression(new Parameter(columnValue), result, parentTable, columnName);
+          const columnName = columnNames[i];
+          const columnValue = columnValues[i];
+
+          if (i > 0) {
+            result.text += ", ";
+          }
+
+          if (columnValue instanceof SqlFragment || columnValue instanceof Parameter || columnValue === Default) {
+            this.compileExpression(columnValue, result, parentTable, columnName);
+          } else this.compileExpression(new Parameter(columnValue), result, parentTable, columnName);
         }
       }
     } else if (typeof expression === "object") {
-      if (expression === globalThis) throw new Error("Did you use `self` (the global object) where you meant `db.self` (the Zapatos value)? The global object cannot be embedded in a query.");
+      if (expression === globalThis) throw new Error("Did you use `self` (the global object) where you meant `db.self` (the Zbs value)? The global object cannot be embedded in a query.");
 
       // must be a Whereable object, so put together a WHERE clause
       const columnNames = <Column[]>Object.keys(expression).sort();
@@ -422,27 +443,32 @@ export class SQLFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       if (columnNames.length) {
         // if the object is not empty
         result.text += "(";
+
         for (let i = 0, len = columnNames.length; i < len; i++) {
           const columnName = columnNames[i],
-            columnValue = (<any>expression)[columnName];
-          if (i > 0) result.text += " AND ";
-          if (columnValue instanceof SQLFragment) {
+            columnValue = (<any>expression)[columnName!];
+          if (i > 0) {
+            result.text += " AND ";
+          }
+
+          if (columnValue instanceof SqlFragment) {
             result.text += "(";
             this.compileExpression(columnValue, result, parentTable, columnName);
             result.text += ")";
           } else {
-            this.compileExpression(columnName, result);
+            this.compileExpression(columnName!, result);
             result.text += ` = `;
             this.compileExpression(columnValue instanceof ParentColumn ? columnValue : new Parameter(columnValue), result, parentTable, columnName);
           }
         }
+
         result.text += ")";
       } else {
         // or if it is empty, it should always match
         result.text += "TRUE";
       }
     } else {
-      throw new Error(`Alien object while interpolating SQL: ${expression}`);
+      throw new Error(`Alien object while interpolating Sql: ${expression}`);
     }
   };
 }

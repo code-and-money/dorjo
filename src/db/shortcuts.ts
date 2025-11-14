@@ -1,47 +1,47 @@
 import type {
-  JSONSelectableForTable,
+  JsonSelectableForTable,
   WhereableForTable,
   InsertableForTable,
   UpdatableForTable,
   ColumnForTable,
   UniqueIndexForTable,
-  SQLForTable,
+  SqlForTable,
   Insertable,
   Updatable,
   Whereable,
   Table,
   Column,
-} from "zapatos/schema";
+} from "zbs/schema";
 
-import { AllType, all, SQL, SQLFragment, sql, cols, vals, raw, param, Default } from "./core";
+import { type AllType, all, type Sql, SqlFragment, sql, cols, vals, raw, param, Default } from "./core";
 
-import { completeKeysWithDefaultValue, mapWithSeparator, NoInfer } from "./utils";
+import { completeKeysWithDefaultValue, mapWithSeparator, type NoInfer } from "./utils";
 
 export type JSONOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
-  JSONSelectableForTable<T>,
+  JsonSelectableForTable<T>,
   C[number]
 >;
 
-export interface SQLFragmentMap {
-  [k: string]: SQLFragment<any>;
+export interface SqlFragmentMap {
+  [k: string]: SqlFragment<any>;
 }
-export interface SQLFragmentOrColumnMap<T extends Table> {
-  [k: string]: SQLFragment<any> | ColumnForTable<T>;
+export interface SqlFragmentOrColumnMap<T extends Table> {
+  [k: string]: SqlFragment<any> | ColumnForTable<T>;
 }
-export type RunResultForSQLFragment<T extends SQLFragment<any, any>> = T extends SQLFragment<infer RunResult, any> ? (undefined extends RunResult ? NonNullable<RunResult> | null : RunResult) : never;
+export type RunResultForSqlFragment<T extends SqlFragment<any, any>> = T extends SqlFragment<infer RunResult, any> ? (undefined extends RunResult ? NonNullable<RunResult> | null : RunResult) : never;
 
-export type LateralResult<L extends SQLFragmentMap> = {
-  [K in keyof L]: RunResultForSQLFragment<L[K]>;
+export type LateralResult<L extends SqlFragmentMap> = {
+  [K in keyof L]: RunResultForSqlFragment<L[K]>;
 };
-export type ExtrasResult<T extends Table, E extends SQLFragmentOrColumnMap<T>> = {
-  [K in keyof E]: E[K] extends SQLFragment<any> ? RunResultForSQLFragment<E[K]> : E[K] extends keyof JSONSelectableForTable<T> ? JSONSelectableForTable<T>[E[K]] : never;
+export type ExtrasResult<T extends Table, E extends SqlFragmentOrColumnMap<T>> = {
+  [K in keyof E]: E[K] extends SqlFragment<any> ? RunResultForSqlFragment<E[K]> : E[K] extends keyof JsonSelectableForTable<T> ? JsonSelectableForTable<T>[E[K]] : never;
 };
 
-export type ExtrasOption<T extends Table> = SQLFragmentOrColumnMap<T> | undefined;
+export type ExtrasOption<T extends Table> = SqlFragmentOrColumnMap<T> | undefined;
 export type ColumnsOption<T extends Table> = readonly ColumnForTable<T>[] | undefined;
 
-type LimitedLateralOption = SQLFragmentMap | undefined;
-type FullLateralOption = LimitedLateralOption | SQLFragment<any>;
+type LimitedLateralOption = SqlFragmentMap | undefined;
+type FullLateralOption = LimitedLateralOption | SqlFragment<any>;
 export type LateralOption<C extends ColumnsOption<Table>, E extends ExtrasOption<Table>> = undefined extends C
   ? undefined extends E
     ? FullLateralOption
@@ -54,18 +54,18 @@ export interface ReturningOptionsForTable<T extends Table, C extends ColumnsOpti
 }
 
 type ReturningTypeForTable<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>> = (undefined extends C
-  ? JSONSelectableForTable<T>
+  ? JsonSelectableForTable<T>
   : C extends ColumnForTable<T>[]
     ? JSONOnlyColsForTable<T, C>
     : never) &
-  (undefined extends E ? {} : E extends SQLFragmentOrColumnMap<T> ? ExtrasResult<T, E> : never);
+  (undefined extends E ? {} : E extends SqlFragmentOrColumnMap<T> ? ExtrasResult<T, E> : never);
 
-function SQLForColumnsOfTable(columns: readonly Column[] | undefined, table: Table) {
+function SqlForColumnsOfTable(columns: readonly Column[] | undefined, table: Table) {
   return columns === undefined ? sql`to_jsonb(${table}.*)` : sql`jsonb_build_object(${mapWithSeparator(columns, sql`, `, (c) => sql`${param(c)}::text, ${c}`)})`;
 }
 
-function SQLForExtras<T extends Table>(extras: ExtrasOption<T>) {
-  return extras === undefined ? [] : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(extras), sql`, `, (k) => sql`${param(k)}::text, ${extras[k]}`)})`;
+function SqlForExtras<T extends Table>(extras: ExtrasOption<T>) {
+  return extras === undefined ? [] : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(extras), sql`, `, (k) => sql`${param(k)}::text, ${extras[k]!}`)})`;
 }
 
 /* === insert === */
@@ -75,17 +75,17 @@ interface InsertSignatures {
     table: T,
     values: InsertableForTable<T>,
     options?: ReturningOptionsForTable<T, C, E>,
-  ): SQLFragment<ReturningTypeForTable<T, C, E>>;
+  ): SqlFragment<ReturningTypeForTable<T, C, E>>;
 
   <T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>>(
     table: T,
     values: InsertableForTable<T>[],
     options?: ReturningOptionsForTable<T, C, E>,
-  ): SQLFragment<ReturningTypeForTable<T, C, E>[]>;
+  ): SqlFragment<ReturningTypeForTable<T, C, E>[]>;
 }
 
 /**
- * Generate an `INSERT` query `SQLFragment`.
+ * Generate an `INSERT` query `SqlFragment`.
  * @param table The table into which to insert
  * @param values The `Insertable` values (or array thereof) to be inserted
  */
@@ -93,20 +93,20 @@ export const insert: InsertSignatures = function (
   table: Table,
   values: Insertable | Insertable[],
   options?: ReturningOptionsForTable<Table, ColumnsOption<Table>, ExtrasOption<Table>>,
-): SQLFragment<any> {
+): SqlFragment<any> {
   let query;
   if (Array.isArray(values) && values.length === 0) {
     query = sql`INSERT INTO ${table} SELECT null WHERE false`;
     query.noop = true;
     query.noopResult = [];
   } else {
-    const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : values,
-      colsSQL = cols(Array.isArray(completedValues) ? completedValues[0] : completedValues),
-      valuesSQL = Array.isArray(completedValues) ? mapWithSeparator(completedValues as Insertable[], sql`, `, (v) => sql`(${vals(v)})`) : sql`(${vals(completedValues)})`,
-      returningSQL = SQLForColumnsOfTable(options?.returning, table),
-      extrasSQL = SQLForExtras(options?.extras);
+    const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : values;
+    const colsSql = cols(Array.isArray(completedValues) ? completedValues[0] : completedValues);
+    const valuesSql = Array.isArray(completedValues) ? mapWithSeparator(completedValues as Insertable[], sql`, `, (v) => sql`(${vals(v)})`) : sql`(${vals(completedValues)})`;
+    const returningSql = SqlForColumnsOfTable(options?.returning, table);
+    const extrasSql = SqlForExtras(options?.extras);
 
-    query = sql`INSERT INTO ${table} (${colsSQL}) VALUES ${valuesSQL} RETURNING ${returningSQL}${extrasSQL} AS result`;
+    query = sql`INSERT INTO ${table} (${colsSql}) VALUES ${valuesSql} RETURNING ${returningSql}${extrasSql} AS result`;
   }
 
   query.runResultTransform = Array.isArray(values) ? (qr) => qr.rows.map((r) => r.result) : (qr) => qr.rows[0].result;
@@ -156,20 +156,20 @@ interface UpsertSignatures {
     values: InsertableForTable<T>,
     conflictTarget: UpsertConflictTargetForTable<T>,
     options?: UpsertOptions<T, C, E, UC, RA>,
-  ): SQLFragment<UpsertReturnableForTable<T, C, E, RA> | (UC extends never[] ? undefined : never)>;
+  ): SqlFragment<UpsertReturnableForTable<T, C, E, RA> | (UC extends never[] ? undefined : never)>;
 
   <T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, UC extends UpdateColumns<T> | undefined, RA extends UpsertReportAction | undefined>(
     table: T,
     values: InsertableForTable<T>[],
     conflictTarget: UpsertConflictTargetForTable<T>,
     options?: UpsertOptions<T, C, E, UC, RA>,
-  ): SQLFragment<UpsertReturnableForTable<T, C, E, RA>[]>;
+  ): SqlFragment<UpsertReturnableForTable<T, C, E, RA>[]>;
 }
 
 export const doNothing = [];
 
 /**
- * Generate an 'upsert' (`INSERT ... ON CONFLICT ...`) query `SQLFragment`.
+ * Generate an 'upsert' (`INSERT ... ON CONFLICT ...`) query `SqlFragment`.
  * @param table The table to update or insert into
  * @param values An `Insertable` of values (or an array thereof) to be inserted
  * or updated
@@ -185,50 +185,64 @@ export const upsert: UpsertSignatures = function (
   values: Insertable | Insertable[],
   conflictTarget: Column | Column[] | Constraint<Table>,
   options?: UpsertOptions<Table, ColumnsOption<Table>, ExtrasOption<Table>, UpdateColumns<Table>, UpsertReportAction>,
-): SQLFragment<any> {
-  if (Array.isArray(values) && values.length === 0) return insert(table, values); // punt a no-op to plain insert
-  if (typeof conflictTarget === "string") conflictTarget = [conflictTarget]; // now either Column[] or Constraint
+): SqlFragment<any> {
+  if (Array.isArray(values) && values.length === 0) {
+    // punt a no-op to plain insert
+    return insert(table, values);
+  }
+  if (typeof conflictTarget === "string") {
+    conflictTarget = [conflictTarget]; // now either Column[] or Constraint
+  }
 
   let noNullUpdateColumns = options?.noNullUpdateColumns ?? [];
-  if (noNullUpdateColumns !== all && !Array.isArray(noNullUpdateColumns)) noNullUpdateColumns = [noNullUpdateColumns];
+
+  if (noNullUpdateColumns !== all && !Array.isArray(noNullUpdateColumns)) {
+    noNullUpdateColumns = [noNullUpdateColumns];
+  }
 
   let specifiedUpdateColumns = options?.updateColumns;
-  if (specifiedUpdateColumns && !Array.isArray(specifiedUpdateColumns)) specifiedUpdateColumns = [specifiedUpdateColumns];
+  if (specifiedUpdateColumns && !Array.isArray(specifiedUpdateColumns)) {
+    specifiedUpdateColumns = [specifiedUpdateColumns];
+  }
 
-  const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : [values],
-    firstRow = completedValues[0],
-    insertColsSQL = cols(firstRow),
-    insertValuesSQL = mapWithSeparator(completedValues, sql`, `, (v) => sql`(${vals(v)})`),
-    colNames = Object.keys(firstRow) as Column[],
-    updateValues = options?.updateValues ?? {},
-    updateColumns = [
-      ...new Set(
-        // deduplicate the keys here
-        [...((specifiedUpdateColumns as string[]) ?? colNames), ...Object.keys(updateValues)],
-      ),
-    ],
-    conflictTargetSQL = Array.isArray(conflictTarget) ? sql`(${mapWithSeparator(conflictTarget, sql`, `, (c) => c)})` : sql<string>`ON CONSTRAINT ${conflictTarget.value}`,
-    updateColsSQL = mapWithSeparator(updateColumns, sql`, `, (c) => c),
-    updateValuesSQL = mapWithSeparator(updateColumns, sql`, `, (c) =>
-      updateValues[c] !== undefined
-        ? updateValues[c]
-        : noNullUpdateColumns === all || noNullUpdateColumns.includes(c)
-          ? sql`CASE WHEN EXCLUDED.${c} IS NULL THEN ${table}.${c} ELSE EXCLUDED.${c} END`
-          : sql`EXCLUDED.${c}`,
-    ),
-    returningSQL = SQLForColumnsOfTable(options?.returning, table),
-    extrasSQL = SQLForExtras(options?.extras),
-    suppressReport = options?.reportAction === "suppress";
+  const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : [values];
+  const firstRow = completedValues[0];
+  const insertColsSql = cols(firstRow);
+  const insertValuesSql = mapWithSeparator(completedValues, sql`, `, (v) => sql`(${vals(v)})`);
+  const colNames = Object.keys(firstRow) as Column[];
+  const updateValues = options?.updateValues ?? {};
 
-  // the added-on $action = 'INSERT' | 'UPDATE' key takes after SQL Server's approach to MERGE
+  // deduplicate the keys here
+  const updateColumns = Array.from(new Set([...((specifiedUpdateColumns as string[]) ?? colNames), ...Object.keys(updateValues)]));
+
+  const conflictTargetSql = Array.isArray(conflictTarget) ? sql`(${mapWithSeparator(conflictTarget, sql`, `, (c) => c)})` : sql<string>`ON CONSTRAINT ${conflictTarget.value}`;
+  const updateColsSql = mapWithSeparator(updateColumns, sql`, `, (c) => c);
+
+  const updateValuesSql = mapWithSeparator(updateColumns, sql`, `, (c) => {
+    if (updateValues[c] !== undefined) {
+      updateValues[c];
+    }
+
+    if (noNullUpdateColumns === all || noNullUpdateColumns.includes(c)) {
+      return sql`CASE WHEN EXCLUDED.${c} IS NULL THEN ${table}.${c} ELSE EXCLUDED.${c} END`;
+    }
+
+    return sql`EXCLUDED.${c}`;
+  });
+
+  const returningSql = SqlForColumnsOfTable(options?.returning, table);
+  const extrasSql = SqlForExtras(options?.extras);
+  const suppressReport = options?.reportAction === "suppress";
+
+  // the added-on $action = 'INSERT' | 'UPDATE' key takes after Sql Server's approach to MERGE
   // (and on the use of xmax for this purpose, see: https://stackoverflow.com/questions/39058213/postgresql-upsert-differentiate-inserted-and-updated-rows-using-system-columns-x)
 
-  const insertPart = sql`INSERT INTO ${table} (${insertColsSQL}) VALUES ${insertValuesSQL}`,
-    conflictPart = sql`ON CONFLICT ${conflictTargetSQL} DO`,
-    conflictActionPart = updateColsSQL.length > 0 ? sql`UPDATE SET (${updateColsSQL}) = ROW(${updateValuesSQL})` : sql`NOTHING`,
-    reportPart = sql` || jsonb_build_object('$action', CASE xmax WHEN 0 THEN 'INSERT' ELSE 'UPDATE' END)`,
-    returningPart = sql`RETURNING ${returningSQL}${extrasSQL}${suppressReport ? [] : reportPart} AS result`,
-    query = sql`${insertPart} ${conflictPart} ${conflictActionPart} ${returningPart}`;
+  const insertPart = sql`INSERT INTO ${table} (${insertColsSql}) VALUES ${insertValuesSql}`;
+  const conflictPart = sql`ON CONFLICT ${conflictTargetSql} DO`;
+  const conflictActionPart = updateColsSql.length > 0 ? sql`UPDATE SET (${updateColsSql}) = ROW(${updateValuesSql})` : sql`NOTHING`;
+  const reportPart = sql` || jsonb_build_object('$action', CASE xmax WHEN 0 THEN 'INSERT' ELSE 'UPDATE' END)`;
+  const returningPart = sql`RETURNING ${returningSql}${extrasSql}${suppressReport ? [] : reportPart} AS result`;
+  const query = sql`${insertPart} ${conflictPart} ${conflictActionPart} ${returningPart}`;
 
   query.runResultTransform = Array.isArray(values) ? (qr) => qr.rows.map((r) => r.result) : (qr) => qr.rows[0]?.result;
 
@@ -241,29 +255,29 @@ interface UpdateSignatures {
   <T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>>(
     table: T,
     values: UpdatableForTable<T>,
-    where: WhereableForTable<T> | SQLFragment<any>,
+    where: WhereableForTable<T> | SqlFragment<any>,
     options?: ReturningOptionsForTable<T, C, E>,
-  ): SQLFragment<ReturningTypeForTable<T, C, E>[]>;
+  ): SqlFragment<ReturningTypeForTable<T, C, E>[]>;
 }
 
 /**
- * Generate an `UPDATE` query `SQLFragment`.
+ * Generate an `UPDATE` query `SqlFragment`.
  * @param table The table to update
  * @param values An `Updatable` of the new values with which to update the table
- * @param where A `Whereable` (or `SQLFragment`) defining which rows to update
+ * @param where A `Whereable` (or `SqlFragment`) defining which rows to update
  */
 export const update: UpdateSignatures = function (
   table: Table,
   values: Updatable,
-  where: Whereable | SQLFragment<any>,
+  where: Whereable | SqlFragment<any>,
   options?: ReturningOptionsForTable<Table, ColumnsOption<Table>, ExtrasOption<Table>>,
-): SQLFragment {
+): SqlFragment {
   // note: the ROW() constructor below is required in Postgres 10+ if we're updating a single column
   // more info: https://www.postgresql-archive.org/Possible-regression-in-UPDATE-SET-lt-column-list-gt-lt-row-expression-gt-with-just-one-single-column0-td5989074.html
 
-  const returningSQL = SQLForColumnsOfTable(options?.returning, table),
-    extrasSQL = SQLForExtras(options?.extras),
-    query = sql`UPDATE ${table} SET (${cols(values)}) = ROW(${vals(values)}) WHERE ${where} RETURNING ${returningSQL}${extrasSQL} AS result`;
+  const returningSql = SqlForColumnsOfTable(options?.returning, table),
+    extrasSql = SqlForExtras(options?.extras),
+    query = sql`UPDATE ${table} SET (${cols(values)}) = ROW(${vals(values)}) WHERE ${where} RETURNING ${returningSql}${extrasSql} AS result`;
 
   query.runResultTransform = (qr) => qr.rows.map((r) => r.result);
   return query;
@@ -274,24 +288,24 @@ export const update: UpdateSignatures = function (
 export interface DeleteSignatures {
   <T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>>(
     table: T,
-    where: WhereableForTable<T> | SQLFragment<any>,
+    where: WhereableForTable<T> | SqlFragment<any>,
     options?: ReturningOptionsForTable<T, C, E>,
-  ): SQLFragment<ReturningTypeForTable<T, C, E>[]>;
+  ): SqlFragment<ReturningTypeForTable<T, C, E>[]>;
 }
 
 /**
- * Generate an `DELETE` query `SQLFragment` (plain 'delete' is a reserved word)
+ * Generate an `DELETE` query `SqlFragment` (plain 'delete' is a reserved word)
  * @param table The table to delete from
- * @param where A `Whereable` (or `SQLFragment`) defining which rows to delete
+ * @param where A `Whereable` (or `SqlFragment`) defining which rows to delete
  */
 export const deletes: DeleteSignatures = function (
   table: Table,
-  where: Whereable | SQLFragment<any>,
+  where: Whereable | SqlFragment<any>,
   options?: ReturningOptionsForTable<Table, ColumnsOption<Table>, ExtrasOption<Table>>,
-): SQLFragment {
-  const returningSQL = SQLForColumnsOfTable(options?.returning, table),
-    extrasSQL = SQLForExtras(options?.extras),
-    query = sql`DELETE FROM ${table} WHERE ${where} RETURNING ${returningSQL}${extrasSQL} AS result`;
+): SqlFragment {
+  const returningSql = SqlForColumnsOfTable(options?.returning, table),
+    extrasSql = SqlForExtras(options?.extras),
+    query = sql`DELETE FROM ${table} WHERE ${where} RETURNING ${returningSql}${extrasSql} AS result`;
 
   query.runResultTransform = (qr) => qr.rows.map((r) => r.result);
   return query;
@@ -303,22 +317,22 @@ type TruncateIdentityOpts = "CONTINUE IDENTITY" | "RESTART IDENTITY";
 type TruncateForeignKeyOpts = "RESTRICT" | "CASCADE";
 
 interface TruncateSignatures {
-  (table: Table | Table[]): SQLFragment<undefined>;
-  (table: Table | Table[], optId: TruncateIdentityOpts): SQLFragment<undefined>;
-  (table: Table | Table[], optFK: TruncateForeignKeyOpts): SQLFragment<undefined>;
-  (table: Table | Table[], optId: TruncateIdentityOpts, optFK: TruncateForeignKeyOpts): SQLFragment<undefined>;
+  (table: Table | Table[]): SqlFragment<undefined>;
+  (table: Table | Table[], optId: TruncateIdentityOpts): SqlFragment<undefined>;
+  (table: Table | Table[], optFK: TruncateForeignKeyOpts): SqlFragment<undefined>;
+  (table: Table | Table[], optId: TruncateIdentityOpts, optFK: TruncateForeignKeyOpts): SqlFragment<undefined>;
 }
 
 /**
- * Generate a `TRUNCATE` query `SQLFragment`.
+ * Generate a `TRUNCATE` query `SqlFragment`.
  * @param table The table (or array thereof) to truncate
  * @param opts Options: 'CONTINUE IDENTITY'/'RESTART IDENTITY' and/or
  * 'RESTRICT'/'CASCADE'
  */
-export const truncate: TruncateSignatures = function (table: Table | Table[], ...opts: string[]): SQLFragment<undefined> {
+export const truncate: TruncateSignatures = function (table: Table | Table[], ...opts: string[]): SqlFragment<undefined> {
   if (!Array.isArray(table)) table = [table];
   const tables = mapWithSeparator(table, sql`, `, (t) => t),
-    query = sql<SQL, undefined>`TRUNCATE ${tables}${raw((opts.length ? " " : "") + opts.join(" "))}`;
+    query = sql<Sql, undefined>`TRUNCATE ${tables}${raw((opts.length ? " " : "") + opts.join(" "))}`;
 
   return query;
 };
@@ -326,7 +340,7 @@ export const truncate: TruncateSignatures = function (table: Table | Table[], ..
 /* === select === */
 
 interface OrderSpecForTable<T extends Table> {
-  by: SQLForTable<T>;
+  by: SqlForTable<T>;
   direction: "ASC" | "DESC";
   nulls?: "FIRST" | "LAST";
 }
@@ -340,15 +354,15 @@ export interface SelectLockingOptions<A extends string> {
 }
 
 export interface SelectOptionsForTable<T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string> {
-  distinct?: boolean | ColumnForTable<T> | ColumnForTable<T>[] | SQLFragment<any>;
+  distinct?: boolean | ColumnForTable<T> | ColumnForTable<T>[] | SqlFragment<any>;
   order?: OrderSpecForTable<T> | OrderSpecForTable<T>[];
   limit?: number;
   offset?: number;
   withTies?: boolean;
   columns?: C;
   extras?: E;
-  groupBy?: ColumnForTable<T> | ColumnForTable<T>[] | SQLFragment<any>;
-  having?: WhereableForTable<T> | SQLFragment<any>;
+  groupBy?: ColumnForTable<T> | ColumnForTable<T>[] | SqlFragment<any>;
+  having?: WhereableForTable<T> | SqlFragment<any>;
   lateral?: L;
   alias?: A;
   lock?: SelectLockingOptions<NoInfer<A>> | SelectLockingOptions<NoInfer<A>>[];
@@ -356,10 +370,10 @@ export interface SelectOptionsForTable<T extends Table, C extends ColumnsOption<
 
 type SelectReturnTypeForTable<T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>> = undefined extends L
   ? ReturningTypeForTable<T, C, E>
-  : L extends SQLFragmentMap
+  : L extends SqlFragmentMap
     ? ReturningTypeForTable<T, C, E> & LateralResult<L>
-    : L extends SQLFragment<any>
-      ? RunResultForSQLFragment<L>
+    : L extends SqlFragment<any>
+      ? RunResultForSqlFragment<L>
       : never;
 
 export enum SelectResultMode {
@@ -379,17 +393,17 @@ export type FullSelectReturnTypeForTable<T extends Table, C extends ColumnsOptio
 export interface SelectSignatures {
   <T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string = never, M extends SelectResultMode = SelectResultMode.Many>(
     table: T,
-    where: WhereableForTable<T> | SQLFragment<any> | AllType,
+    where: WhereableForTable<T> | SqlFragment<any> | AllType,
     options?: SelectOptionsForTable<T, C, L, E, A>,
     mode?: M,
     aggregate?: string,
-  ): SQLFragment<FullSelectReturnTypeForTable<T, C, L, E, M>>;
+  ): SqlFragment<FullSelectReturnTypeForTable<T, C, L, E, M>>;
 }
 
 export class NotExactlyOneError extends Error {
   // see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error
-  query: SQLFragment;
-  constructor(query: SQLFragment, ...params: any[]) {
+  query: SqlFragment;
+  constructor(query: SqlFragment, ...params: any[]) {
     super(...params);
     if (Error.captureStackTrace) Error.captureStackTrace(this, NotExactlyOneError); // V8 only
     this.name = "NotExactlyOneError";
@@ -398,10 +412,10 @@ export class NotExactlyOneError extends Error {
 }
 
 /**
- * Generate a `SELECT` query `SQLFragment`. This can be nested with other
+ * Generate a `SELECT` query `SqlFragment`. This can be nested with other
  * `select`/`selectOne`/`count` queries using the `lateral` option.
  * @param table The table to select from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be selected,
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be selected,
  * or `all`
  * @param options Options object. Keys (all optional) are:
  * * `columns` — an array of column names: only these columns will be returned
@@ -414,47 +428,48 @@ export class NotExactlyOneError extends Error {
  * the containing query
  * * `alias` — table alias (string): required if using `lateral` to join a table
  * to itself
- * * `extras` — an object mapping key(s) to `SQLFragment`s, so that derived
+ * * `extras` — an object mapping key(s) to `SqlFragment`s, so that derived
  * quantities can be included in the JSON result
  * @param mode (Used internally by `selectOne` and `count`)
  */
 export const select: SelectSignatures = function (
   table: Table,
-  where: Whereable | SQLFragment<any> | AllType = all,
+  where: Whereable | SqlFragment<any> | AllType = all,
   options: SelectOptionsForTable<Table, ColumnsOption<Table>, LateralOption<ColumnsOption<Table>, ExtrasOption<Table>>, ExtrasOption<Table>, any> = {},
   mode: SelectResultMode = SelectResultMode.Many,
   aggregate: string = "count",
 ) {
-  const limit1 = mode === SelectResultMode.One || mode === SelectResultMode.ExactlyOne,
-    allOptions = limit1 ? { ...options, limit: 1 } : options,
-    alias = allOptions.alias || table,
-    { distinct, groupBy, having, lateral, columns, extras } = allOptions,
-    lock = allOptions.lock === undefined || Array.isArray(allOptions.lock) ? allOptions.lock : [allOptions.lock],
-    order = allOptions.order === undefined || Array.isArray(allOptions.order) ? allOptions.order : [allOptions.order],
-    tableAliasSQL = alias === table ? [] : sql<string>` AS ${alias}`,
-    distinctSQL = !distinct
-      ? []
-      : sql` DISTINCT${distinct instanceof SQLFragment || typeof distinct === "string" ? sql` ON (${distinct})` : Array.isArray(distinct) ? sql` ON (${cols(distinct)})` : []}`,
-    colsSQL =
-      lateral instanceof SQLFragment
+  const limit1 = mode === SelectResultMode.One || mode === SelectResultMode.ExactlyOne;
+  const allOptions = limit1 ? { ...options, limit: 1 } : options;
+  const alias = allOptions.alias || table;
+  const { distinct, groupBy, having, lateral, columns, extras } = allOptions;
+  const lock = allOptions.lock === undefined || Array.isArray(allOptions.lock) ? allOptions.lock : [allOptions.lock];
+  const order = allOptions.order === undefined || Array.isArray(allOptions.order) ? allOptions.order : [allOptions.order];
+  const tableAliasSql = alias === table ? [] : sql<string>` AS ${alias}`;
+  const distinctSql = !distinct
+    ? []
+    : sql` DISTINCT${distinct instanceof SqlFragment || typeof distinct === "string" ? sql` ON (${distinct})` : Array.isArray(distinct) ? sql` ON (${cols(distinct)})` : []}`;
+
+  const colsSql =
+      lateral instanceof SqlFragment
         ? []
         : mode === SelectResultMode.Numeric
           ? columns
             ? sql`${raw(aggregate)}(${cols(columns)})`
             : sql`${raw(aggregate)}(*)`
-          : SQLForColumnsOfTable(columns, alias as Table),
-    colsExtraSQL = lateral instanceof SQLFragment || mode === SelectResultMode.Numeric ? [] : SQLForExtras(extras),
-    colsLateralSQL =
+          : SqlForColumnsOfTable(columns, alias as Table),
+    colsExtraSql = lateral instanceof SqlFragment || mode === SelectResultMode.Numeric ? [] : SqlForExtras(extras),
+    colsLateralSql =
       lateral === undefined || mode === SelectResultMode.Numeric
         ? []
-        : lateral instanceof SQLFragment
+        : lateral instanceof SqlFragment
           ? sql`"lateral_passthru".result`
           : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(lateral).sort(), sql`, `, (k) => sql`${param(k)}::text, "lateral_${raw(k)}".result`)})`,
-    allColsSQL = sql`${colsSQL}${colsExtraSQL}${colsLateralSQL}`,
-    whereSQL = where === all ? [] : sql` WHERE ${where}`,
-    groupBySQL = !groupBy ? [] : sql` GROUP BY ${groupBy instanceof SQLFragment || typeof groupBy === "string" ? groupBy : cols(groupBy)}`,
-    havingSQL = !having ? [] : sql` HAVING ${having}`,
-    orderSQL =
+    allColsSql = sql`${colsSql}${colsExtraSql}${colsLateralSql}`,
+    whereSql = where === all ? [] : sql` WHERE ${where}`,
+    groupBySql = !groupBy ? [] : sql` GROUP BY ${groupBy instanceof SqlFragment || typeof groupBy === "string" ? groupBy : cols(groupBy)}`,
+    havingSql = !having ? [] : sql` HAVING ${having}`,
+    orderSql =
       order === undefined
         ? []
         : sql` ORDER BY ${mapWithSeparator(order as OrderSpecForTable<Table>[], sql`, `, (o) => {
@@ -463,9 +478,9 @@ export const select: SelectSignatures = function (
             if (o.nulls && !["FIRST", "LAST"].includes(o.nulls)) throw new Error(`Nulls must be FIRST/LAST/undefined, not '${o.nulls}'`);
             return sql`${o.by} ${raw(o.direction)}${o.nulls ? sql` NULLS ${raw(o.nulls)}` : []}`;
           })}`,
-    limitSQL = allOptions.limit === undefined ? [] : allOptions.withTies ? sql` FETCH FIRST ${param(allOptions.limit)} ROWS WITH TIES` : sql` LIMIT ${param(allOptions.limit)}`, // compatibility with pg pre-10.5; and fewer bytes!
-    offsetSQL = allOptions.offset === undefined ? [] : sql` OFFSET ${param(allOptions.offset)}`, // pg is lax about OFFSET following FETCH, and we exploit that
-    lockSQL =
+    limitSql = allOptions.limit === undefined ? [] : allOptions.withTies ? sql` FETCH FIRST ${param(allOptions.limit)} ROWS WITH TIES` : sql` LIMIT ${param(allOptions.limit)}`, // compatibility with pg pre-10.5; and fewer bytes!
+    offsetSql = allOptions.offset === undefined ? [] : sql` OFFSET ${param(allOptions.offset)}`, // pg is lax about OFFSET following FETCH, and we exploit that
+    lockSql =
       lock === undefined
         ? []
         : (lock as SelectLockingOptions<string>[]).map((lock) => {
@@ -474,10 +489,10 @@ export const select: SelectSignatures = function (
               ofClause = ofTables === undefined ? [] : sql` OF ${mapWithSeparator(ofTables as Table[], sql`, `, (t) => t)}`; // `as` clause is required when TS not strict
             return sql` FOR ${raw(lock.for)}${ofClause}${lock.wait ? sql` ${raw(lock.wait)}` : []}`;
           }),
-    lateralSQL =
+    lateralSql =
       lateral === undefined
         ? []
-        : lateral instanceof SQLFragment
+        : lateral instanceof SqlFragment
           ? (() => {
               return sql` LEFT JOIN LATERAL (${lateral.copy({ parentTable: alias })}) AS "lateral_passthru" ON true`;
             })()
@@ -485,19 +500,19 @@ export const select: SelectSignatures = function (
               .sort()
               .map((k) => {
                 /// enables `parent('column')` in subquery's Whereables
-                const subQ = lateral[k].copy({ parentTable: alias });
+                const subQ = lateral[k]?.copy({ parentTable: alias })!;
                 return sql` LEFT JOIN LATERAL (${subQ}) AS "lateral_${raw(k)}" ON true`;
               });
 
   const rowsQuery = sql<
-      SQL,
+      Sql,
       any
-    >`SELECT${distinctSQL} ${allColsSQL} AS result FROM ${table}${tableAliasSQL}${lateralSQL}${whereSQL}${groupBySQL}${havingSQL}${orderSQL}${limitSQL}${offsetSQL}${lockSQL}`,
+    >`SELECT${distinctSql} ${allColsSql} AS result FROM ${table}${tableAliasSql}${lateralSql}${whereSql}${groupBySql}${havingSql}${orderSql}${limitSql}${offsetSql}${lockSql}`,
     query =
       mode !== SelectResultMode.Many
         ? rowsQuery
         : // we need the aggregate to sit in a sub-SELECT in order to keep ORDER and LIMIT working as usual
-          sql<SQL, any>`SELECT coalesce(jsonb_agg(result), '[]') AS result FROM (${rowsQuery}) AS ${raw(`"sq_${alias}"`)}`;
+          sql<Sql, any>`SELECT coalesce(jsonb_agg(result), '[]') AS result FROM (${rowsQuery}) AS ${raw(`"sq_${alias}"`)}`;
 
   query.runResultTransform =
     mode === SelectResultMode.Numeric
@@ -521,17 +536,17 @@ export const select: SelectSignatures = function (
 export interface SelectOneSignatures {
   <T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string>(
     table: T,
-    where: WhereableForTable<T> | SQLFragment<any> | AllType,
+    where: WhereableForTable<T> | SqlFragment<any> | AllType,
     options?: SelectOptionsForTable<T, C, L, E, A>,
-  ): SQLFragment<FullSelectReturnTypeForTable<T, C, L, E, SelectResultMode.One>>;
+  ): SqlFragment<FullSelectReturnTypeForTable<T, C, L, E, SelectResultMode.One>>;
 }
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns only a single result (or
+ * Generate a `SELECT` query `SqlFragment` that returns only a single result (or
  * undefined). A `LIMIT 1` clause is added automatically. This can be nested with
  * other `select`/`selectOne`/`count` queries using the `lateral` option.
  * @param table The table to select from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be selected,
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be selected,
  * or `all`
  * @param options Options object. See documentation for `select` for details.
  */
@@ -551,18 +566,18 @@ export const selectOne: SelectOneSignatures = function (table, where, options = 
 export interface SelectExactlyOneSignatures {
   <T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string>(
     table: T,
-    where: WhereableForTable<T> | SQLFragment<any> | AllType,
+    where: WhereableForTable<T> | SqlFragment<any> | AllType,
     options?: SelectOptionsForTable<T, C, L, E, A>,
-  ): SQLFragment<FullSelectReturnTypeForTable<T, C, L, E, SelectResultMode.ExactlyOne>>;
+  ): SqlFragment<FullSelectReturnTypeForTable<T, C, L, E, SelectResultMode.ExactlyOne>>;
 }
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns a single result or
+ * Generate a `SELECT` query `SqlFragment` that returns a single result or
  * throws an error. A `LIMIT 1` clause is added automatically. This can be
  * nested with other `select`/`selectOne`/`count` queries using the `lateral`
  * option.
  * @param table The table to select from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be selected,
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be selected,
  * or `all`
  * @param options Options object. See documentation for `select` for details.
  */
@@ -576,16 +591,16 @@ export const selectExactlyOne: SelectExactlyOneSignatures = function (table, whe
 export interface NumericAggregateSignatures {
   <T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string>(
     table: T,
-    where: WhereableForTable<T> | SQLFragment<any> | AllType,
+    where: WhereableForTable<T> | SqlFragment<any> | AllType,
     options?: SelectOptionsForTable<T, C, L, E, A>,
-  ): SQLFragment<number>;
+  ): SqlFragment<number>;
 }
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns a count. This can be
+ * Generate a `SELECT` query `SqlFragment` that returns a count. This can be
  * nested in other `select`/`selectOne` queries using their `lateral` option.
  * @param table The table to count from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be counted,
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be counted,
  * or `all`
  * @param options Options object. Useful keys may be: `columns`, `alias`.
  */
@@ -594,10 +609,10 @@ export const count: NumericAggregateSignatures = function (table, where, options
 };
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns a sum. This can be
+ * Generate a `SELECT` query `SqlFragment` that returns a sum. This can be
  * nested in other `select`/`selectOne` queries using their `lateral` option.
  * @param table The table to aggregate from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be
  * aggregated, or `all`
  * @param options Options object. Useful keys may be: `columns`, `alias`.
  */
@@ -606,11 +621,11 @@ export const sum: NumericAggregateSignatures = function (table, where, options?)
 };
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns an arithmetic mean via
+ * Generate a `SELECT` query `SqlFragment` that returns an arithmetic mean via
  * the `avg` aggregate function. This can be nested in other `select`/
  * `selectOne` queries using their `lateral` option.
  * @param table The table to aggregate from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be
  * aggregated, or `all`
  * @param options Options object. Useful keys may be: `columns`, `alias`.
  */
@@ -619,11 +634,11 @@ export const avg: NumericAggregateSignatures = function (table, where, options?)
 };
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns a minimum via the `min`
+ * Generate a `SELECT` query `SqlFragment` that returns a minimum via the `min`
  * aggregate function. This can be nested in other `select`/`selectOne` queries
  * using their `lateral` option.
  * @param table The table to aggregate from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be
  * aggregated, or `all`
  * @param options Options object. Useful keys may be: `columns`, `alias`.
  */
@@ -632,11 +647,11 @@ export const min: NumericAggregateSignatures = function (table, where, options?)
 };
 
 /**
- * Generate a `SELECT` query `SQLFragment` that returns a maximum via the `max`
+ * Generate a `SELECT` query `SqlFragment` that returns a maximum via the `max`
  * aggregate function. This can be nested in other `select`/`selectOne` queries
  * using their `lateral` option.
  * @param table The table to aggregate from
- * @param where A `Whereable` or `SQLFragment` defining the rows to be
+ * @param where A `Whereable` or `SqlFragment` defining the rows to be
  * aggregated, or `all`
  * @param options Options object. Useful keys may be: `columns`, `alias`.
  */

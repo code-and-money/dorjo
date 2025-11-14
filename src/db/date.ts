@@ -60,19 +60,30 @@ interface ToDate {
  */
 export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrUTC | undefined) {
   let dateMatch;
-  if (d === null) return null;
+
+  if (d === null) {
+    return null;
+  }
+
   switch (tzInterpretation) {
     case undefined:
       return new Date(d);
+
     case "UTC":
       return new Date(d + "Z");
-    case "local":
+
+    case "local": {
       // new Date() interprets 'yyyy-mm-dd' as UTC but 'yyyy-mm-ddT00:00' as local
       if ((dateMatch = d.match(/^([0-9]+)-([0-9]+)-([0-9]+)$/))) {
         const [, y, m, d] = dateMatch;
+        if (!y || !m || !d) {
+          throw new Error("y m d; TODO: proper error");
+        }
         return new Date(parseInt(y, 10), parseInt(m, 10) - /* cRaZY jS */ 1, parseInt(d, 10));
       }
+
       return new Date(d);
+    }
   }
 };
 
@@ -107,21 +118,28 @@ interface ToString {
  * example: `"timestamptz"`, `"timestamp:local"` or `"date:UTC"`.
  */
 export const toString: ToString = function (d: Date | null, stringTypeTz: "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`): any {
-  if (d === null) return null;
-  if (stringTypeTz === "timestamptz") return d.toISOString();
+  if (d === null) {
+    return null;
+  }
 
-  const [stringType, tz] = stringTypeTz.split(":"),
-    utc = tz === "UTC",
-    year = pad(utc ? d.getUTCFullYear() : d.getFullYear(), 4),
-    month = pad((utc ? d.getUTCMonth() : d.getMonth()) + /* cRaZY jS */ 1),
-    day = pad(utc ? d.getUTCDate() : d.getDate());
+  if (stringTypeTz === "timestamptz") {
+    return d.toISOString();
+  }
 
-  if (stringType === "date") return `${year}-${month}-${day}`;
+  const [stringType, tz] = stringTypeTz.split(":");
+  const utc = tz === "UTC";
+  const year = pad(utc ? d.getUTCFullYear() : d.getFullYear(), 4);
+  const month = pad((utc ? d.getUTCMonth() : d.getMonth()) + /* cRaZY jS */ 1);
+  const day = pad(utc ? d.getUTCDate() : d.getDate());
 
-  const hour = pad(utc ? d.getUTCHours() : d.getHours()),
-    min = pad(utc ? d.getUTCMinutes() : d.getMinutes()),
-    sec = pad(utc ? d.getUTCSeconds() : d.getSeconds()),
-    ms = pad(utc ? d.getUTCMilliseconds() : d.getMilliseconds(), 3);
+  if (stringType === "date") {
+    return `${year}-${month}-${day}`;
+  }
+
+  const hour = pad(utc ? d.getUTCHours() : d.getHours());
+  const min = pad(utc ? d.getUTCMinutes() : d.getMinutes());
+  const sec = pad(utc ? d.getUTCSeconds() : d.getSeconds());
+  const ms = pad(utc ? d.getUTCMilliseconds() : d.getMilliseconds(), 3);
 
   return `${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}`;
 };

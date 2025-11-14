@@ -2,7 +2,7 @@ import * as pg from "pg";
 import { tsTypeForPgType } from "./pg-types";
 import type { EnumData } from "./enums";
 import type { CustomTypes } from "./ts-output";
-import { CompleteConfig } from "./config";
+import type { CompleteConfig } from "./config";
 
 export interface Relation {
   schema: string;
@@ -136,25 +136,24 @@ export async function definitionForRelationInSchema(
       // cases 2, 3, 4
       const customType: string = domainName ?? udtName;
       const prefixedCustomType = transformCustomType(customType, config);
-
-      customTypes[prefixedCustomType] = selectableType;
+      Object.assign(customTypes, { [prefixedCustomType]: selectableType });
       selectableType = JSONSelectableType = whereableType = insertableType = updatableType = "c." + prefixedCustomType;
     }
 
     selectables.push(`${columnDoc}${possiblyQuotedColumn}: ${selectableType}${orNull};`);
     JSONSelectables.push(`${columnDoc}${possiblyQuotedColumn}: ${JSONSelectableType}${orNull};`);
 
-    const basicWhereableTypes = `${whereableType} | db.Parameter<${whereableType}> | db.SQLFragment | db.ParentColumn`;
-    whereables.push(`${columnDoc}${possiblyQuotedColumn}?: ${basicWhereableTypes} | db.SQLFragment<any, ${basicWhereableTypes}>;`);
+    const basicWhereableTypes = `${whereableType} | db.Parameter<${whereableType}> | db.SqlFragment | db.ParentColumn`;
+    whereables.push(`${columnDoc}${possiblyQuotedColumn}?: ${basicWhereableTypes} | db.SqlFragment<any, ${basicWhereableTypes}>;`);
 
-    const insertableTypes = `${insertableType} | db.Parameter<${insertableType}>${orNull}${orDefault} | db.SQLFragment`;
+    const insertableTypes = `${insertableType} | db.Parameter<${insertableType}>${orNull}${orDefault} | db.SqlFragment`;
     if (isInsertable) {
       insertables.push(`${columnDoc}${possiblyQuotedColumn}${insertablyOptional}: ${insertableTypes};`);
     }
 
-    const updatableTypes = `${updatableType} | db.Parameter<${updatableType}>${orNull}${orDefault} | db.SQLFragment`;
+    const updatableTypes = `${updatableType} | db.Parameter<${updatableType}>${orNull}${orDefault} | db.SqlFragment`;
     if (isUpdatable) {
-      updatables.push(`${columnDoc}${possiblyQuotedColumn}?: ${updatableTypes} | db.SQLFragment<any, ${updatableTypes}>;`);
+      updatables.push(`${columnDoc}${possiblyQuotedColumn}?: ${updatableTypes} | db.SqlFragment<any, ${updatableTypes}>;`);
     }
   });
 
@@ -207,8 +206,8 @@ export namespace ${rel.name} {
   export type UniqueIndex = ${uniqueIndexes.length > 0 ? uniqueIndexes.map((ui) => "'" + ui.indexname + "'").join(" | ") : "never"};
   export type Column = keyof Selectable;
   export type OnlyCols<T extends readonly Column[]> = Pick<Selectable, T[number]>;
-  export type SQLExpression = Table | db.ColumnNames<Updatable | (keyof Updatable)[]> | db.ColumnValues<Updatable> | Whereable | Column | db.ParentColumn | db.GenericSQLExpression;
-  export type SQL = SQLExpression | SQLExpression[];
+  export type SqlExpression = Table | db.ColumnNames<Updatable | (keyof Updatable)[]> | db.ColumnValues<Updatable> | Whereable | Column | db.ParentColumn | db.GenericSqlExpression;
+  export type Sql = SqlExpression | SqlExpression[];
 }`;
 
   return tableDef;
@@ -268,7 +267,7 @@ export type AllMaterializedViews = ${tableMappedArray(
 export type AllTablesAndViews = ${tableMappedArray(tables, "Table")};`;
 
 export const crossSchemaTypesForAllTables = (allTables: Relation[], unprefixedSchema: string | null) =>
-  ["Selectable", "JSONSelectable", "Whereable", "Insertable", "Updatable", "UniqueIndex", "Column", "SQL"]
+  ["Selectable", "JSONSelectable", "Whereable", "Insertable", "Updatable", "UniqueIndex", "Column", "Sql"]
     .map(
       (thingable) => `
 export type ${thingable}ForTable<T extends Table> = ${

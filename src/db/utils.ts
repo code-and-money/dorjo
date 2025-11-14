@@ -27,7 +27,7 @@ export const mapWithSeparator = <TIn, TSep, TOut>(arr: readonly TIn[], separator
   const result: (TOut | TSep)[] = [];
   for (let i = 0, len = arr.length; i < len; i++) {
     if (i > 0) result.push(separator);
-    result.push(cb(arr[i], i, arr));
+    result.push(cb(arr[i]!, i, arr));
   }
   return result;
 };

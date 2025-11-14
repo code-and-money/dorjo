@@ -1,19 +1,29 @@
 import { parse } from "json-custom-numbers";
 import type * as pgLib from "pg";
 
-export function enableCustomJSONParsingForLargeNumbers(pg: typeof pgLib) {
-  pg.types.setTypeParser(pg.types.builtins.JSON, parseJSONWithLargeNumbersAsStrings);
-  pg.types.setTypeParser(pg.types.builtins.JSONB, parseJSONWithLargeNumbersAsStrings);
+export function enableCustomJsonParsingForLargeNumbers(pg: typeof pgLib) {
+  pg.types.setTypeParser(pg.types.builtins.JSON, parseJsonWithLargeNumbersAsStrings);
+  pg.types.setTypeParser(pg.types.builtins.JSONB, parseJsonWithLargeNumbersAsStrings);
 }
 
 const { MAX_SAFE_INTEGER, MIN_SAFE_INTEGER } = Number;
 
-function parseJSONWithLargeNumbersAsStrings(str: string) {
+function parseJsonWithLargeNumbersAsStrings(str: string) {
   return parse(str, undefined, function (_k, str) {
     const n = Number(str); // JSON parser ensures this is an ordinary number, parseInt(str, 10) not needed
-    if (n === Infinity || n === -Infinity) return str;
-    if ((n < MIN_SAFE_INTEGER || n > MAX_SAFE_INTEGER) && str.indexOf(".") === -1) return str;
-    if (str.length <= 15 || numericStringToExponential(str) === n.toExponential()) return n;
+
+    if (n === Infinity || n === -Infinity) {
+      return str;
+    }
+
+    if ((n < MIN_SAFE_INTEGER || n > MAX_SAFE_INTEGER) && str.indexOf(".") === -1) {
+      return str;
+    }
+
+    if (str.length <= 15 || numericStringToExponential(str) === n.toExponential()) {
+      return n;
+    }
+
     return str;
   });
 }
@@ -28,7 +38,10 @@ const numRe = /^(-?)(0|[1-9][0-9]*?)(0*)([.](0*)([0-9]*?)0*)?([eE]([-+]?)0*([0-9
  */
 function numericStringToExponential(str: string) {
   const match = str.match(numRe);
-  if (!match) throw new Error(`Invalid numeric string: ${str}`);
+
+  if (!match) {
+    throw new Error(`Invalid numeric string: ${str}`);
+  }
 
   const [
     _,
@@ -51,26 +64,31 @@ function numericStringToExponential(str: string) {
     if (!srcDigitsPostDp) return "0e+0";
 
     // n !== 0, -1 < n < 1
-    exp -= srcLeadingZeroesPostDp.length + 1;
+    exp -= srcLeadingZeroesPostDp?.length! + 1;
     result += srcDigitsPostDp.charAt(0);
 
     if (srcDigitsPostDp.length > 1) result += `.${srcDigitsPostDp.slice(1)}`;
   } else {
     // n <= -1, n >= 1
-    exp += srcTrailingZeroesPreDp.length + srcDigitsPreDp.length - 1;
-    result += srcDigitsPreDp.charAt(0);
+    exp += srcTrailingZeroesPreDp?.length! + srcDigitsPreDp?.length! - 1;
+    result += srcDigitsPreDp?.charAt(0)!;
 
-    if (srcDigitsPreDp.length > 1 || srcDigitsPostDp) {
-      result += `.${srcDigitsPreDp.slice(1)}`;
+    if (srcDigitsPreDp?.length! > 1 || srcDigitsPostDp) {
+      result += `.${srcDigitsPreDp?.slice(1)}`;
       if (srcDigitsPostDp) {
-        result += srcTrailingZeroesPreDp;
-        if (srcLeadingZeroesPostDp) result += srcLeadingZeroesPostDp;
+        result += srcTrailingZeroesPreDp!;
+
+        if (srcLeadingZeroesPostDp) {
+          result += srcLeadingZeroesPostDp;
+        }
+
         result += srcDigitsPostDp;
       }
     }
   }
 
   result += `e${exp >= 0 ? "+" : ""}${exp}`;
+
   return result;
 }
 

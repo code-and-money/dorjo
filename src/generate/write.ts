@@ -7,7 +7,7 @@ import { header } from "./header";
 
 /**
  * Generate a schema and supporting files and folders given a configuration.
- * @param suppliedConfig An object approximately matching `zapatosconfig.json`.
+ * @param suppliedConfig An object approximately matching `zbsconfig.json`.
  */
 export const generate = async (suppliedConfig: Config) => {
   const config = finaliseConfig(suppliedConfig);
@@ -15,7 +15,7 @@ export const generate = async (suppliedConfig: Config) => {
   const warn = config.warningListener === true ? console.log : config.warningListener || (() => void 0);
   const debug = config.debugListener === true ? console.log : config.debugListener || (() => void 0);
   const { ts, customTypeSourceFiles } = await tsForConfig(config, debug);
-  const folderName = "zapatos";
+  const folderName = "zbs";
   const schemaName = `schema${config.outExt}`;
   const customFolderName = "custom";
   const customTypesIndexName = `index${config.outExt}`;
@@ -23,7 +23,7 @@ export const generate = async (suppliedConfig: Config) => {
     header() +
     `
 // this empty declaration appears to fix relative imports in other custom type files
-declare module 'zapatos/custom' { }
+declare module 'zbs/custom' { }
 `;
 
   const folderTargetPath = path.join(config.outDir, folderName);
@@ -46,7 +46,7 @@ declare module 'zapatos/custom' { }
         log(`Custom type or domain declaration file already exists: ${customTypeFilePath}`);
       } else {
         warn(`Writing new custom type or domain placeholder file: ${customTypeFilePath}`);
-        const customTypeFileContent = customTypeSourceFiles[customTypeFileName];
+        const customTypeFileContent = customTypeSourceFiles[customTypeFileName]!;
         fs.writeFileSync(customTypeFilePath, customTypeFileContent, { flag: "w" });
       }
     }

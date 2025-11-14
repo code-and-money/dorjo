@@ -8,7 +8,7 @@ const recurseNodes = (node: string): string[] => (fs.statSync(node).isFile() ? [
 export function srcWarning(config: CompleteConfig) {
   if (config.outExt === ".ts") return; // if .ts extension is explicitly set, our legacy detection code fails
 
-  const legacyFolderName = "zapatos";
+  const legacyFolderName = "zbs";
   const legacyFolderPath = path.join(config.outDir, legacyFolderName);
   const legacySchemaName = "schema.ts";
   const legacySchemaPath = path.join(legacyFolderPath, legacySchemaName);
@@ -27,36 +27,36 @@ export function srcWarning(config: CompleteConfig) {
 
     warn(
       `
-*** IMPORTANT: ZAPATOS NO LONGER COPIES ITS SOURCE TO YOUR SOURCE TREE ***
+*** IMPORTANT: ZBS NO LONGER COPIES ITS SOURCE TO YOUR SOURCE TREE ***
 
 To convert your codebase, please do the following:
 
-* Make sure zapatos is a "dependency" (not merely a "devDependency") in your npm
+* Make sure zbs is a "dependency" (not merely a "devDependency") in your npm
   'package.json'
 
-* Remove the "srcMode" key, if present, from 'zapatosconfig.json' or the config
+* Remove the "srcMode" key, if present, from 'zbsconfig.json' or the config
   argument passed to 'generate'
 ` +
         (legacySchemaExists
           ? `
-* Delete the file 'zapatos/schema.ts' (but leave 'zapatos/schema.d.ts')
+* Delete the file 'zbs/schema.ts' (but leave 'zbs/schema.d.ts')
 `
           : ``) +
         (legacySrcExists
           ? `
-* Delete the folder 'zapatos/src' and all its contents
+* Delete the folder 'zbs/src' and all its contents
 `
           : ``) +
         (legacyCustomTypesExist
           ? `
-* Transfer any customised type declarations in 'zapatos/custom' from the plain
+* Transfer any customised type declarations in 'zbs/custom' from the plain
   old '.ts' files to the new '.d.ts' files
 
-* Delete all the plain '.ts' files in 'zapatos/custom', including 'index.ts'
+* Delete all the plain '.ts' files in 'zbs/custom', including 'index.ts'
 `
           : ``) +
         `
-* Ensure that the '.d.ts' files in 'zapatos' are picked up by your TypeScript
+* Ensure that the '.d.ts' files in 'zbs' are picked up by your TypeScript
   configuration (e.g. check the "files" or "include" key in 'tsconfig.json')
 
 * If you use 'ts-node' or 'node -r ts-node/register', pass the --files option
@@ -65,24 +65,24 @@ To convert your codebase, please do the following:
 * Make the following changes to your imports (you can use VS Code's 'Replace in
   Files' command, remembering to toggle Regular Expressions on):
 
-   1) Change:  import * as zapatos from 'zapatos'
-      To:      import * as zapatos from 'zapatos/generate'
+   1) Change:  import * as zbs from 'zbs'
+      To:      import * as zbs from 'zbs/generate'
 
-      Search:  ^(\\s*import[^"']*['"])zapatos(["'])
-      Replace: $1zapatos/generate$2
+      Search:  ^(\\s*import[^"']*['"])zbs(["'])
+      Replace: $1zbs/generate$2
 
-   2) Change:  import * as db from './path/to/zapatos/src'
-      To:      import * as db from 'zapatos/db'
+   2) Change:  import * as db from './path/to/zbs/src'
+      To:      import * as db from 'zbs/db'
 
-      Search:  ^(\\s*import[^"']*['"])[^"']*/zapatos/src(["'])
-      Replace: $1zapatos/db$2
+      Search:  ^(\\s*import[^"']*['"])[^"']*/zbs/src(["'])
+      Replace: $1zbs/db$2
 
-   3) Change:  import * as s from './path/to/zapatos/schema'
-      To:      import type * as s from 'zapatos/schema'
+   3) Change:  import * as s from './path/to/zbs/schema'
+      To:      import type * as s from 'zbs/schema'
                       ^^^^
                       be sure to import type, not just import
 
-      Search:  ^(\\s*import\\s*)(type\\s*)?([^"']*['"])[^"']*/(zapatos/schema["'])
+      Search:  ^(\\s*import\\s*)(type\\s*)?([^"']*['"])[^"']*/(zbs/schema["'])
       Replace: $1type $3$4
 
 Thank you.

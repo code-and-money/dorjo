@@ -28,7 +28,7 @@ export type IsolationSatisfying<T extends IsolationLevel> = {
 }[T];
 
 export interface TxnClient<T extends IsolationLevel> extends pg.PoolClient {
-  _zapatos?: {
+  _zbs?: {
     isolationLevel: T;
     txnId: number;
   };
@@ -43,12 +43,22 @@ export type TxnClientForReadCommittedRO = TxnClient<IsolationSatisfying<Isolatio
 export type TxnClientForSerializableRODeferrable = TxnClient<IsolationSatisfying<IsolationLevel.SerializableRODeferrable>>;
 
 function typeofQueryable(queryable: Queryable) {
-  if (queryable instanceof pg.Pool) return "pool";
-  if (queryable instanceof pg.Client) return "client";
+  if (queryable instanceof pg.Pool) {
+    return "pool";
+  }
+
+  if (queryable instanceof pg.Client) {
+    return "client";
+  }
 
   if (Object.prototype.hasOwnProperty.call(pg, "native") && Object.prototype.propertyIsEnumerable.call(pg, "native") && pg.native) {
-    if (queryable instanceof pg.native.Pool) return "pool";
-    if (queryable instanceof pg.native.Client) return "pool";
+    if (queryable instanceof pg.native.Pool) {
+      return "pool";
+    }
+
+    if (queryable instanceof pg.native.Client) {
+      return "pool";
+    }
   }
 
   // for pg < 8, and sometimes in 8.x for reasons that aren't clear, all the
@@ -56,7 +66,10 @@ function typeofQueryable(queryable: Queryable) {
   // `_connected`, which is defined (as a boolean) on clients (pure JS and
   // native) but not on pools
 
-  if ((queryable as any)._connected === undefined) return "pool";
+  if ((queryable as any)._connected === undefined) {
+    return "pool";
+  }
+
   return "client";
 }
 
@@ -78,28 +91,30 @@ export async function transaction<T, M extends IsolationLevel>(
   isolationLevel: M,
   callback: (client: TxnClient<IsolationSatisfying<M>>) => Promise<T>,
 ): Promise<T> {
-  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, "_zapatos")) {
+  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, "_zbs")) {
     // if txnClientOrQueryable is a TxnClient, just pass it through
     return callback(txnClientOrQueryable as TxnClient<IsolationSatisfying<M>>);
   }
 
   if (txnSeq >= Number.MAX_SAFE_INTEGER - 1) txnSeq = 0; // wrap around
 
-  const txnId = txnSeq++,
-    clientIsOurs = typeofQueryable(txnClientOrQueryable) === "pool",
-    txnClient = (clientIsOurs ? await txnClientOrQueryable.connect() : txnClientOrQueryable) as TxnClient<M>;
+  const txnId = txnSeq++;
+  const clientIsOurs = typeofQueryable(txnClientOrQueryable) === "pool";
+  const txnClient = (clientIsOurs ? await txnClientOrQueryable.connect() : txnClientOrQueryable) as TxnClient<M>;
 
-  txnClient._zapatos = { isolationLevel, txnId };
+  txnClient._zbs = { isolationLevel, txnId };
 
-  const config = getConfig(),
-    { transactionListener } = config,
-    maxAttempts = config.transactionAttemptsMax,
-    { minMs, maxMs } = config.transactionRetryDelay;
+  const config = getConfig();
+  const { transactionListener } = config;
+  const maxAttempts = config.transactionAttemptsMax;
+  const { minMs, maxMs } = config.transactionRetryDelay;
 
   try {
     for (let attempt = 1; ; attempt++) {
       try {
-        if (attempt > 1 && transactionListener) transactionListener(`Retrying transaction, attempt ${attempt} of ${maxAttempts}`, txnId);
+        if (attempt > 1 && transactionListener) {
+          transactionListener(`Retrying transaction, attempt ${attempt} of ${maxAttempts}`, txnId);
+        }
 
         await sql`START TRANSACTION ISOLATION LEVEL ${raw(isolationLevel)}`.run(txnClient);
         const result = await callback(txnClient as TxnClient<IsolationSatisfying<M>>);
@@ -117,10 +132,14 @@ export async function transaction<T, M extends IsolationLevel>(
         if (isDatabaseError(err, "TransactionRollback_SerializationFailure", "TransactionRollback_DeadlockDetected")) {
           if (attempt < maxAttempts) {
             const delayBeforeRetry = Math.round(minMs + (maxMs - minMs) * Math.random());
-            if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
+            if (transactionListener) {
+              transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
+            }
             await wait(delayBeforeRetry);
           } else {
-            if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, giving up`, txnId);
+            if (transactionListener) {
+              transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, giving up`, txnId);
+            }
             throw err;
           }
         } else {
@@ -129,8 +148,10 @@ export async function transaction<T, M extends IsolationLevel>(
       }
     }
   } finally {
-    delete txnClient._zapatos;
-    if (clientIsOurs) txnClient.release();
+    delete txnClient._zbs;
+    if (clientIsOurs) {
+      txnClient.release();
+    }
   }
 }
 

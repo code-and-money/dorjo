@@ -1,17 +1,33 @@
 {
-  "include": ["src/**/*"],
   "compilerOptions": {
-    "baseUrl": ".",
-    "outDir": "dist",
-    "rootDir": "src",
-    "target": "ES2019",
-    "module": "CommonJS",
+    // Environment setup & latest features
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowJs": true,
+
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    // Best practices
     "strict": true,
-    "exactOptionalPropertyTypes": true,
-    "declaration": true,
-    "noUnusedLocals": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+
+    // Some stricter flags (disabled by default)
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noPropertyAccessFromIndexSignature": false,
     "paths": {
-      "*": ["src/typings/*"]
+      "*": ["./src/typings/*"]
     }
-  }
+  },
+  "include": ["src/**/*"]
 }
