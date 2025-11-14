@@ -4,16 +4,15 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-import * as pg from 'pg';
-import { isDatabaseError } from './pgErrors';
-import { wait } from './utils';
-import { sql, raw } from './core';
-import { getConfig } from './config';
-import type { Queryable } from './core';
-
+import * as pg from "pg";
+import { isDatabaseError } from "./pgErrors";
+import { wait } from "./utils";
+import { sql, raw } from "./core";
+import { getConfig } from "./config";
+import type { Queryable } from "./core";
 
 export enum IsolationLevel {
-  // these are the only meaningful values in Postgres: 
+  // these are the only meaningful values in Postgres:
   // see https://www.postgresql.org/docs/11/sql-set-transaction.html
   Serializable = "SERIALIZABLE",
   RepeatableRead = "REPEATABLE READ",
@@ -21,7 +20,7 @@ export enum IsolationLevel {
   SerializableRO = "SERIALIZABLE, READ ONLY",
   RepeatableReadRO = "REPEATABLE READ, READ ONLY",
   ReadCommittedRO = "READ COMMITTED, READ ONLY",
-  SerializableRODeferrable = "SERIALIZABLE, READ ONLY, DEFERRABLE"
+  SerializableRODeferrable = "SERIALIZABLE, READ ONLY, DEFERRABLE",
 }
 
 export type IsolationSatisfying<T extends IsolationLevel> = {
@@ -29,8 +28,14 @@ export type IsolationSatisfying<T extends IsolationLevel> = {
   [IsolationLevel.RepeatableRead]: IsolationSatisfying<IsolationLevel.Serializable> | IsolationLevel.RepeatableRead;
   [IsolationLevel.ReadCommitted]: IsolationSatisfying<IsolationLevel.RepeatableRead> | IsolationLevel.ReadCommitted;
   [IsolationLevel.SerializableRO]: IsolationSatisfying<IsolationLevel.Serializable> | IsolationLevel.SerializableRO;
-  [IsolationLevel.RepeatableReadRO]: IsolationSatisfying<IsolationLevel.SerializableRO> | IsolationSatisfying<IsolationLevel.RepeatableRead> | IsolationLevel.RepeatableReadRO;
-  [IsolationLevel.ReadCommittedRO]: IsolationSatisfying<IsolationLevel.RepeatableReadRO> | IsolationSatisfying<IsolationLevel.ReadCommitted> | IsolationLevel.ReadCommittedRO;
+  [IsolationLevel.RepeatableReadRO]:
+    | IsolationSatisfying<IsolationLevel.SerializableRO>
+    | IsolationSatisfying<IsolationLevel.RepeatableRead>
+    | IsolationLevel.RepeatableReadRO;
+  [IsolationLevel.ReadCommittedRO]:
+    | IsolationSatisfying<IsolationLevel.RepeatableReadRO>
+    | IsolationSatisfying<IsolationLevel.ReadCommitted>
+    | IsolationLevel.ReadCommittedRO;
   [IsolationLevel.SerializableRODeferrable]: IsolationSatisfying<IsolationLevel.SerializableRO> | IsolationLevel.SerializableRODeferrable;
 }[T];
 
@@ -49,18 +54,13 @@ export type TxnClientForRepeatableReadRO = TxnClient<IsolationSatisfying<Isolati
 export type TxnClientForReadCommittedRO = TxnClient<IsolationSatisfying<IsolationLevel.ReadCommittedRO>>;
 export type TxnClientForSerializableRODeferrable = TxnClient<IsolationSatisfying<IsolationLevel.SerializableRODeferrable>>;
 
-
 function typeofQueryable(queryable: Queryable) {
-  if (queryable instanceof pg.Pool) return 'pool';
-  if (queryable instanceof pg.Client) return 'client';
+  if (queryable instanceof pg.Pool) return "pool";
+  if (queryable instanceof pg.Client) return "client";
 
-  if (
-    Object.prototype.hasOwnProperty.call(pg, 'native') &&
-    Object.prototype.propertyIsEnumerable.call(pg, 'native') &&
-    pg.native
-  ) {
-    if (queryable instanceof pg.native.Pool) return 'pool';
-    if (queryable instanceof pg.native.Client) return 'pool';
+  if (Object.prototype.hasOwnProperty.call(pg, "native") && Object.prototype.propertyIsEnumerable.call(pg, "native") && pg.native) {
+    if (queryable instanceof pg.native.Pool) return "pool";
+    if (queryable instanceof pg.native.Client) return "pool";
   }
 
   // for pg < 8, and sometimes in 8.x for reasons that aren't clear, all the
@@ -68,16 +68,16 @@ function typeofQueryable(queryable: Queryable) {
   // `_connected`, which is defined (as a boolean) on clients (pure JS and
   // native) but not on pools
 
-  if ((queryable as any)._connected === undefined) return 'pool';
-  return 'client';
+  if ((queryable as any)._connected === undefined) return "pool";
+  return "client";
 }
 
 let txnSeq = 0;
 
 /**
- * Provide a database client to the callback, whose queries are then wrapped in 
+ * Provide a database client to the callback, whose queries are then wrapped in
  * a database transaction. The transaction is committed, retried, or rolled back
- * as appropriate. 
+ * as appropriate.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
  * a plain client, or an existing transaction client to be passed through
  * @param isolationLevel The desired isolation level (e.g.
@@ -88,25 +88,22 @@ let txnSeq = 0;
 export async function transaction<T, M extends IsolationLevel>(
   txnClientOrQueryable: Queryable | TxnClient<IsolationSatisfying<M>>,
   isolationLevel: M,
-  callback: (client: TxnClient<IsolationSatisfying<M>>) => Promise<T>
+  callback: (client: TxnClient<IsolationSatisfying<M>>) => Promise<T>,
 ): Promise<T> {
-
-  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, '_zapatos')) {
+  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, "_zapatos")) {
     // if txnClientOrQueryable is a TxnClient, just pass it through
     return callback(txnClientOrQueryable as TxnClient<IsolationSatisfying<M>>);
   }
 
-  if (txnSeq >= Number.MAX_SAFE_INTEGER - 1) txnSeq = 0;  // wrap around
+  if (txnSeq >= Number.MAX_SAFE_INTEGER - 1) txnSeq = 0; // wrap around
 
-  const
-    txnId = txnSeq++,
-    clientIsOurs = typeofQueryable(txnClientOrQueryable) === 'pool',
+  const txnId = txnSeq++,
+    clientIsOurs = typeofQueryable(txnClientOrQueryable) === "pool",
     txnClient = (clientIsOurs ? await txnClientOrQueryable.connect() : txnClientOrQueryable) as TxnClient<M>;
 
   txnClient._zapatos = { isolationLevel, txnId };
 
-  const
-    config = getConfig(),
+  const config = getConfig(),
     { transactionListener } = config,
     maxAttempts = config.transactionAttemptsMax,
     { minMs, maxMs } = config.transactionRetryDelay;
@@ -121,7 +118,6 @@ export async function transaction<T, M extends IsolationLevel>(
         await sql`COMMIT`.run(txnClient);
 
         return result;
-
       } catch (err: any) {
         await sql`ROLLBACK`.run(txnClient);
 
@@ -133,20 +129,18 @@ export async function transaction<T, M extends IsolationLevel>(
         if (isDatabaseError(err, "TransactionRollback_SerializationFailure", "TransactionRollback_DeadlockDetected")) {
           if (attempt < maxAttempts) {
             const delayBeforeRetry = Math.round(minMs + (maxMs - minMs) * Math.random());
-            if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
+            if (transactionListener)
+              transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, retrying in ${delayBeforeRetry}ms`, txnId);
             await wait(delayBeforeRetry);
-
           } else {
             if (transactionListener) transactionListener(`Transaction rollback (code ${err.code}) on attempt ${attempt} of ${maxAttempts}, giving up`, txnId);
             throw err;
           }
-
         } else {
           throw err;
         }
       }
     }
-
   } finally {
     delete txnClient._zapatos;
     if (clientIsOurs) txnClient.release();
@@ -170,17 +164,23 @@ export async function serializable<T>(txnClientOrQueryable: Queryable | TxnClien
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function repeatableRead<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableRead, callback: (client: TxnClientForRepeatableRead) => Promise<T>) {
+export async function repeatableRead<T>(
+  txnClientOrQueryable: Queryable | TxnClientForRepeatableRead,
+  callback: (client: TxnClientForRepeatableRead) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableRead, callback);
 }
 /**
  * Shortcut for `transaction` with isolation level `ReadCommitted`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
  * a plain client, or an existing transaction client to be passed through
- * @param callback A callback function that runs queries on the client provided 
+ * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function readCommitted<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommitted, callback: (client: TxnClientForReadCommitted) => Promise<T>) {
+export async function readCommitted<T>(
+  txnClientOrQueryable: Queryable | TxnClientForReadCommitted,
+  callback: (client: TxnClientForReadCommitted) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommitted, callback);
 }
 /**
@@ -190,7 +190,10 @@ export async function readCommitted<T>(txnClientOrQueryable: Queryable | TxnClie
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function serializableRO<T>(txnClientOrQueryable: Queryable | TxnClientForSerializableRO, callback: (client: TxnClientForSerializableRO) => Promise<T>) {
+export async function serializableRO<T>(
+  txnClientOrQueryable: Queryable | TxnClientForSerializableRO,
+  callback: (client: TxnClientForSerializableRO) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.SerializableRO, callback);
 }
 /**
@@ -200,7 +203,10 @@ export async function serializableRO<T>(txnClientOrQueryable: Queryable | TxnCli
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function repeatableReadRO<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableReadRO, callback: (client: TxnClientForRepeatableReadRO) => Promise<T>) {
+export async function repeatableReadRO<T>(
+  txnClientOrQueryable: Queryable | TxnClientForRepeatableReadRO,
+  callback: (client: TxnClientForRepeatableReadRO) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableReadRO, callback);
 }
 /**
@@ -210,7 +216,10 @@ export async function repeatableReadRO<T>(txnClientOrQueryable: Queryable | TxnC
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function readCommittedRO<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommittedRO, callback: (client: TxnClientForReadCommittedRO) => Promise<T>) {
+export async function readCommittedRO<T>(
+  txnClientOrQueryable: Queryable | TxnClientForReadCommittedRO,
+  callback: (client: TxnClientForReadCommittedRO) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommittedRO, callback);
 }
 /**
@@ -220,6 +229,9 @@ export async function readCommittedRO<T>(txnClientOrQueryable: Queryable | TxnCl
  * @param callback A callback function that runs queries on the client provided
  * to it
  */
-export async function serializableRODeferrable<T>(txnClientOrQueryable: Queryable | TxnClientForSerializableRODeferrable, callback: (client: TxnClientForSerializableRODeferrable) => Promise<T>) {
+export async function serializableRODeferrable<T>(
+  txnClientOrQueryable: Queryable | TxnClientForSerializableRODeferrable,
+  callback: (client: TxnClientForSerializableRODeferrable) => Promise<T>,
+) {
   return transaction(txnClientOrQueryable, IsolationLevel.SerializableRODeferrable, callback);
 }

@@ -4,21 +4,12 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-import {
-  SQLFragment,
-  ParentColumn,
-  Parameter,
-  param,
-  sql,
-  SQL,
-  self,
-  vals,
-} from './core';
+import { SQLFragment, ParentColumn, Parameter, param, sql, SQL, self, vals } from "./core";
 
-import { mapWithSeparator } from './utils';
-import type { Whereable } from 'zapatos/schema';
+import { mapWithSeparator } from "./utils";
+import type { Whereable } from "zapatos/schema";
 
-const conditionalParam = (a: any) => a instanceof SQLFragment || a instanceof ParentColumn || a instanceof Parameter ? a : param(a);
+const conditionalParam = (a: any) => (a instanceof SQLFragment || a instanceof ParentColumn || a instanceof Parameter ? a : param(a));
 
 export const isNull = sql<SQL, boolean>`${self} IS NULL`;
 export const isNotNull = sql<SQL, boolean>`${self} IS NOT NULL`;
@@ -39,10 +30,11 @@ export const gte = <T>(a: T) => sql<SQL, boolean | null, T>`${self} >= ${conditi
 export const lt = <T>(a: T) => sql<SQL, boolean | null, T>`${self} < ${conditionalParam(a)}`;
 export const lte = <T>(a: T) => sql<SQL, boolean | null, T>`${self} <= ${conditionalParam(a)}`;
 
-export const between = <T>(a: T, b: T) => sql<SQL, boolean | null, T> `${self} BETWEEN (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
-export const betweenSymmetric = <T>(a: T, b: T) => sql<SQL, boolean | null, T> `${self} BETWEEN SYMMETRIC (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
-export const notBetween = <T>(a: T, b: T) => sql<SQL, boolean | null, T> `${self} NOT BETWEEN (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
-export const notBetweenSymmetric = <T>(a: T, b: T) => sql<SQL, boolean | null, T> `${self} NOT BETWEEN SYMMETRIC (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
+export const between = <T>(a: T, b: T) => sql<SQL, boolean | null, T>`${self} BETWEEN (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
+export const betweenSymmetric = <T>(a: T, b: T) => sql<SQL, boolean | null, T>`${self} BETWEEN SYMMETRIC (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
+export const notBetween = <T>(a: T, b: T) => sql<SQL, boolean | null, T>`${self} NOT BETWEEN (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
+export const notBetweenSymmetric = <T>(a: T, b: T) =>
+  sql<SQL, boolean | null, T>`${self} NOT BETWEEN SYMMETRIC (${conditionalParam(a)}) AND (${conditionalParam(b)})`;
 
 export const like = <T extends string>(a: T) => sql<SQL, boolean | null, T>`${self} LIKE ${conditionalParam(a)}`;
 export const notLike = <T extends string>(a: T) => sql<SQL, boolean | null, T>`${self} NOT LIKE ${conditionalParam(a)}`;
@@ -55,11 +47,13 @@ export const reImatch = <T extends string>(a: T) => sql<SQL, boolean | null, T>`
 export const notReMatch = <T extends string>(a: T) => sql<SQL, boolean | null, T>`${self} !~ ${conditionalParam(a)}`;
 export const notReImatch = <T extends string>(a: T) => sql<SQL, boolean | null, T>`${self} !~* ${conditionalParam(a)}`;
 
-export const isIn = <T>(a: readonly T[]) => a.length > 0 ? sql<SQL, boolean | null, T>`${self} IN (${vals(a)})` : sql`false`;
-export const isNotIn = <T>(a: readonly T[]) => a.length > 0 ? sql<SQL, boolean | null, T>`${self} NOT IN (${vals(a)})` : sql`true`;
+export const isIn = <T>(a: readonly T[]) => (a.length > 0 ? sql<SQL, boolean | null, T>`${self} IN (${vals(a)})` : sql`false`);
+export const isNotIn = <T>(a: readonly T[]) => (a.length > 0 ? sql<SQL, boolean | null, T>`${self} NOT IN (${vals(a)})` : sql`true`);
 
-export const or = <T>(...conditions: (SQLFragment<any, T> | Whereable)[]) => sql<SQL, boolean | null, T>`(${mapWithSeparator(conditions, sql` OR `, c => c)})`;
-export const and = <T>(...conditions: (SQLFragment<any, T> | Whereable)[]) => sql<SQL, boolean | null, T>`(${mapWithSeparator(conditions, sql` AND `, c => c)})`;
+export const or = <T>(...conditions: (SQLFragment<any, T> | Whereable)[]) =>
+  sql<SQL, boolean | null, T>`(${mapWithSeparator(conditions, sql` OR `, (c) => c)})`;
+export const and = <T>(...conditions: (SQLFragment<any, T> | Whereable)[]) =>
+  sql<SQL, boolean | null, T>`(${mapWithSeparator(conditions, sql` AND `, (c) => c)})`;
 export const not = <T>(condition: SQLFragment<any, T> | Whereable) => sql<SQL, boolean | null, T>`(NOT ${condition})`;
 
 export const arrayContains = <T>(a: T[] | ParentColumn) => sql<SQL, boolean | null, T>`${self} @> ${conditionalParam(a)}`;
@@ -67,9 +61,9 @@ export const arrayContainedIn = <T>(a: T[] | ParentColumn) => sql<SQL, boolean |
 export const arrayOverlaps = <T>(a: T[] | ParentColumn) => sql<SQL, boolean | null, T>`${self} && ${conditionalParam(a)}`;
 
 // things that aren't genuinely conditions
-type PluralisingIntervalUnit = 'microsecond' | 'millisecond' | 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' | 'decade';
-type IntervalUnit = PluralisingIntervalUnit | `${PluralisingIntervalUnit}s` | 'century' | 'centuries' | 'millennium' | 'millennia';
-export const fromNow = (n: number, unit: IntervalUnit = 'millisecond') => sql`now() + ${param(String(n) + ' ' + unit)}`;
+type PluralisingIntervalUnit = "microsecond" | "millisecond" | "second" | "minute" | "hour" | "day" | "week" | "month" | "year" | "decade";
+type IntervalUnit = PluralisingIntervalUnit | `${PluralisingIntervalUnit}s` | "century" | "centuries" | "millennium" | "millennia";
+export const fromNow = (n: number, unit: IntervalUnit = "millisecond") => sql`now() + ${param(String(n) + " " + unit)}`;
 export const after = gt;
 export const before = lt;
 export const now = sql`now()`;

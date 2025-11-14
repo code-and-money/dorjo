@@ -13,15 +13,16 @@ export interface SQLQuery {
 export interface Config {
   transactionAttemptsMax: number;
   transactionRetryDelay: { minMs: number; maxMs: number };
-  castArrayParamsToJson: boolean;   // see https://github.com/brianc/node-postgres/issues/2012
-  castObjectParamsToJson: boolean;  // useful if json will be cast onward differently from text
+  castArrayParamsToJson: boolean; // see https://github.com/brianc/node-postgres/issues/2012
+  castObjectParamsToJson: boolean; // useful if json will be cast onward differently from text
   queryListener?(query: SQLQuery, txnId?: number): void;
   resultListener?(result: any, txnId?: number, elapsedMs?: number, query?: SQLQuery): void;
   transactionListener?(message: string, txnId?: number): void;
 }
 export type NewConfig = Partial<Config>;
 
-let config: Config = {  // defaults
+let config: Config = {
+  // defaults
   transactionAttemptsMax: 5,
   transactionRetryDelay: { minMs: 25, maxMs: 250 },
   castArrayParamsToJson: false,
@@ -37,5 +38,4 @@ export const getConfig = () => ({ ...config });
  * Set key(s) on the configuration.
  * @param newConfig Partial configuration object
  */
-export const setConfig = (newConfig: NewConfig) =>
-  config = { ...config, ...newConfig };
+export const setConfig = (newConfig: NewConfig) => (config = { ...config, ...newConfig });

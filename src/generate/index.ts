@@ -4,9 +4,9 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-export * from './config';
-export * from './enums';
-export * from './pgTypes';
-export * from './tables';
-export * from './tsOutput';
-export * from './write';
+export * from "./config";
+export * from "./enums";
+export * from "./pgTypes";
+export * from "./tables";
+export * from "./tsOutput";
+export * from "./write";

@@ -16,7 +16,7 @@ interface Error {
 export function isDatabaseError(err: Error, ...types: (keyof typeof pgErrors)[]) {
   const { code } = err;
   if (!code || code.length !== 5) return false;
-  return types.some(type => code.startsWith(pgErrors[type]));
+  return types.some((type) => code.startsWith(pgErrors[type]));
 }
 
 const pgErrors = {

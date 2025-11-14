@@ -4,8 +4,7 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-import { pad } from './utils';
-
+import { pad } from "./utils";
 
 /**
  * An ISO8601-formatted date string, such as `"2021-05-25"`.
@@ -15,12 +14,12 @@ export type DateString = `${number}-${number}-${number}`;
 /**
  * An ISO8601-formatted time string, such as `"14:41"` or `"14:41:10.249"`.
  */
-export type TimeString = `${number}:${number}${'' | `:${number}`}`;
+export type TimeString = `${number}:${number}${"" | `:${number}`}`;
 
 /**
  * A timezone suffix string, such as `"Z"`, `"-02"`, or `"+01:00"`.
  */
-export type TzSuffix = 'Z' | `${'+' | '-'}${number}${'' | `:${number}`}`;
+export type TzSuffix = "Z" | `${"+" | "-"}${number}${"" | `:${number}`}`;
 
 /**
  * A time and timezone string, such as `"14:41:10+02"`. **Postgres docs advise
@@ -40,8 +39,7 @@ export type TimestampString = `${DateString}T${TimeString}`;
  */
 export type TimestampTzString = `${TimestampString}${TzSuffix}`;
 
-
-type TzLocalOrUTC = 'UTC' | 'local';
+type TzLocalOrUTC = "UTC" | "local";
 
 interface ToDate {
   <D extends null | TimestampTzString>(d: D, tzInterpretation?: undefined): D extends null ? null : Date;
@@ -52,8 +50,8 @@ interface ToDate {
  * Convert a `TimestampTzString`, `TimestampString` or `DateString` to a
  * JavaScript `Date`. For `TimestampString` and `DateString`, you must specify
  * whether the input is to be interpreted in the JavaScript environment's local
- * time or as UTC. 
- * 
+ * time or as UTC.
+ *
  * Nullability is preserved (e.g. `TimestampTzString | null` input gives
  * `Date | null` output).
  *
@@ -72,9 +70,9 @@ export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrU
   switch (tzInterpretation) {
     case undefined:
       return new Date(d);
-    case 'UTC':
-      return new Date(d + 'Z');
-    case 'local':
+    case "UTC":
+      return new Date(d + "Z");
+    case "local":
       // new Date() interprets 'yyyy-mm-dd' as UTC but 'yyyy-mm-ddT00:00' as local
       if ((dateMatch = d.match(/^([0-9]+)-([0-9]+)-([0-9]+)$/))) {
         const [, y, m, d] = dateMatch;
@@ -85,14 +83,18 @@ export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrU
 };
 
 interface ToString {
-  <D extends Date | null, T extends 'timestamptz' | `${'timestamp' | 'date'}:${TzLocalOrUTC}`>(d: D, stringTypeTz: T):
-    D extends null ? null : {
-      'timestamptz': TimestampTzString;
-      'timestamp:UTC': TimestampString;
-      'timestamp:local': TimestampString;
-      'date:UTC': DateString;
-      'date:local': DateString;
-    }[T];
+  <D extends Date | null, T extends "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`>(
+    d: D,
+    stringTypeTz: T,
+  ): D extends null
+    ? null
+    : {
+        timestamptz: TimestampTzString;
+        "timestamp:UTC": TimestampString;
+        "timestamp:local": TimestampString;
+        "date:UTC": DateString;
+        "date:local": DateString;
+      }[T];
 }
 
 /**
@@ -110,21 +112,19 @@ interface ToString {
  * and (except for `timestamptz`) whether to express in UTC or local time. For
  * example: `"timestamptz"`, `"timestamp:local"` or `"date:UTC"`.
  */
-export const toString: ToString = function (d: Date | null, stringTypeTz: 'timestamptz' | `${'timestamp' | 'date'}:${TzLocalOrUTC}`): any {
+export const toString: ToString = function (d: Date | null, stringTypeTz: "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`): any {
   if (d === null) return null;
-  if (stringTypeTz === 'timestamptz') return d.toISOString();
+  if (stringTypeTz === "timestamptz") return d.toISOString();
 
-  const
-    [stringType, tz] = stringTypeTz.split(':'),
-    utc = tz === 'UTC',
+  const [stringType, tz] = stringTypeTz.split(":"),
+    utc = tz === "UTC",
     year = pad(utc ? d.getUTCFullYear() : d.getFullYear(), 4),
     month = pad((utc ? d.getUTCMonth() : d.getMonth()) + /* cRaZY jS */ 1),
     day = pad(utc ? d.getUTCDate() : d.getDate());
 
-  if (stringType === 'date') return `${year}-${month}-${day}`;
+  if (stringType === "date") return `${year}-${month}-${day}`;
 
-  const
-    hour = pad(utc ? d.getUTCHours() : d.getHours()),
+  const hour = pad(utc ? d.getUTCHours() : d.getHours()),
     min = pad(utc ? d.getUTCMinutes() : d.getMinutes()),
     sec = pad(utc ? d.getUTCSeconds() : d.getSeconds()),
     ms = pad(utc ? d.getUTCMilliseconds() : d.getMilliseconds(), 3);

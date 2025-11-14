@@ -4,14 +4,12 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-import * as pg from 'pg';
-
+import * as pg from "pg";
 
 export type EnumData = { [k: string]: string[] };
 
 export const enumDataForSchema = async (schemaName: string, queryFn: (q: pg.QueryConfig) => Promise<pg.QueryResult<any>>) => {
-  const
-    { rows } = await queryFn({
+  const { rows } = await queryFn({
       text: `
         SELECT
           n.nspname AS schema
@@ -24,7 +22,6 @@ export const enumDataForSchema = async (schemaName: string, queryFn: (q: pg.Quer
         ORDER BY t.typname ASC, e.enumlabel ASC`,
       values: [schemaName],
     }),
-
     enums: EnumData = rows.reduce((memo, row) => {
       memo[row.name] = memo[row.name] ?? [];
       memo[row.name].push(row.value);
@@ -36,12 +33,14 @@ export const enumDataForSchema = async (schemaName: string, queryFn: (q: pg.Quer
 
 export const enumTypesForEnumData = (enums: EnumData) => {
   const types = Object.keys(enums)
-    .map(name => `
-export type ${name} = ${enums[name].map(v => `'${v}'`).join(' | ')};
+    .map(
+      (name) => `
+export type ${name} = ${enums[name].map((v) => `'${v}'`).join(" | ")};
 export namespace every {
-  export type ${name} = [${enums[name].map(v => `'${v}'`).join(', ')}];
-}`)
-    .join('');
+  export type ${name} = [${enums[name].map((v) => `'${v}'`).join(", ")}];
+}`,
+    )
+    .join("");
 
   return types;
 };

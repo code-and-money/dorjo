@@ -4,8 +4,8 @@ Copyright (C) 2020 - 2023 George MacKerron
 Released under the MIT licence: see LICENCE file
 */
 
-import { parse } from 'json-custom-numbers';
-import type * as pgLib from 'pg';
+import { parse } from "json-custom-numbers";
+import type * as pgLib from "pg";
 
 export function enableCustomJSONParsingForLargeNumbers(pg: typeof pgLib) {
   pg.types.setTypeParser(pg.types.builtins.JSON, parseJSONWithLargeNumbersAsStrings);
@@ -16,9 +16,9 @@ const { MAX_SAFE_INTEGER, MIN_SAFE_INTEGER } = Number;
 
 function parseJSONWithLargeNumbersAsStrings(str: string) {
   return parse(str, undefined, function (k, str) {
-    const n = +str;  // JSON parser ensures this is an ordinary number, parseInt(str, 10) not needed
+    const n = +str; // JSON parser ensures this is an ordinary number, parseInt(str, 10) not needed
     if (n === Infinity || n === -Infinity) return str;
-    if ((n < MIN_SAFE_INTEGER || n > MAX_SAFE_INTEGER) && str.indexOf('.') === -1) return str;
+    if ((n < MIN_SAFE_INTEGER || n > MAX_SAFE_INTEGER) && str.indexOf(".") === -1) return str;
     if (str.length <= 15 || numericStringToExponential(str) === n.toExponential()) return n;
     return str;
   });
@@ -27,7 +27,7 @@ function parseJSONWithLargeNumbersAsStrings(str: string) {
 const numRe = /^(-?)(0|[1-9][0-9]*?)(0*)([.](0*)([0-9]*?)0*)?([eE]([-+]?)0*([0-9]+))?$/;
 
 /**
- * Transform a valid numeric string (any length and precision) into a format 
+ * Transform a valid numeric string (any length and precision) into a format
  * that matches Number.prototype.toExponential()
  * @param str A numeric string
  * @returns str The string reformatted to match n.toExponential()
@@ -37,31 +37,37 @@ function numericStringToExponential(str: string) {
   if (!match) throw new Error(`Invalid numeric string: ${str}`);
 
   const [
-    /* discard whole match */, srcMinus, srcDigitsPreDp, srcTrailingZeroesPreDp,
-    /* discard decimal point + following digits */, srcLeadingZeroesPostDp, srcDigitsPostDp,
-    /* discard e + sign + exponent digits */, srcSignExp, srcDigitsExp,
+    ,
+    /* discard whole match */ srcMinus,
+    srcDigitsPreDp,
+    srcTrailingZeroesPreDp,
+    ,
+    /* discard decimal point + following digits */ srcLeadingZeroesPostDp,
+    srcDigitsPostDp,
+    ,
+    /* discard e + sign + exponent digits */ srcSignExp,
+    srcDigitsExp,
   ] = match;
 
-  let exp = srcDigitsExp ? (srcSignExp === '-' ? -srcDigitsExp : +srcDigitsExp) : 0;
+  let exp = srcDigitsExp ? (srcSignExp === "-" ? -srcDigitsExp : +srcDigitsExp) : 0;
   let result = srcMinus;
 
-  if (srcDigitsPreDp === '0') {
+  if (srcDigitsPreDp === "0") {
     // n === 0
-    if (!srcDigitsPostDp) return '0e+0';
+    if (!srcDigitsPostDp) return "0e+0";
 
     // n !== 0, -1 < n < 1
     exp -= srcLeadingZeroesPostDp.length + 1;
     result += srcDigitsPostDp.charAt(0);
 
-    if (srcDigitsPostDp.length > 1) result += '.' + srcDigitsPostDp.slice(1);
-
+    if (srcDigitsPostDp.length > 1) result += "." + srcDigitsPostDp.slice(1);
   } else {
     // n <= -1, n >= 1
     exp += srcTrailingZeroesPreDp.length + srcDigitsPreDp.length - 1;
     result += srcDigitsPreDp.charAt(0);
 
     if (srcDigitsPreDp.length > 1 || srcDigitsPostDp) {
-      result += '.' + srcDigitsPreDp.slice(1);
+      result += "." + srcDigitsPreDp.slice(1);
       if (srcDigitsPostDp) {
         result += srcTrailingZeroesPreDp;
         if (srcLeadingZeroesPostDp) result += srcLeadingZeroesPostDp;
@@ -70,10 +76,9 @@ function numericStringToExponential(str: string) {
     }
   }
 
-  result += 'e' + (exp >= 0 ? '+' : '') + exp;
+  result += "e" + (exp >= 0 ? "+" : "") + exp;
   return result;
 }
-
 
 // function testExpFromString(str: string) {
 //   const
