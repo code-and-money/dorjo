@@ -1,7 +1,7 @@
 import type * as pg from "pg";
 
 import { getConfig, type SqlQuery } from "./config";
-import { isPOJO, type NoInfer } from "./utils";
+import { type NoInfer } from "./utils";
 
 import type { Updatable, Whereable, Table, Column } from "zbs/schema";
 
@@ -234,10 +234,10 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
   /**
    * When calling `run`, this function is applied to the object returned by `pg`
    * to produce the result that is returned. By default, the `rows` array is
-   * returned — i.e. `(qr) => qr.rows` — but some shortcut functions alter this
+   * returned — i.e. `(queryResult) => queryResult.rows` — but some shortcut functions alter this
    * in order to match their declared `RunResult` type.
    */
-  runResultTransform: (qr: pg.QueryResult) => any = (qr) => qr.rows;
+  runResultTransform: (queryResult: pg.QueryResult) => any = (queryResult) => queryResult.rows;
 
   parentTable?: string = undefined; // used for nested shortcut select queries
   preparedName?: string = undefined; // for prepared statements
@@ -302,8 +302,8 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
     }
 
     if (!this.noop || force) {
-      const qr = await queryable.query(query);
-      result = this.runResultTransform(qr);
+      const queryResult = await queryable.query(query);
+      result = this.runResultTransform(queryResult);
     } else {
       result = this.noopResult;
     }
@@ -344,7 +344,9 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
   };
 
   compileExpression = (expression: Sql, result: SqlQuery = { text: "", values: [] }, parentTable?: string, currentColumn?: Column) => {
-    if (this.parentTable) parentTable = this.parentTable;
+    if (this.parentTable) {
+      parentTable = this.parentTable;
+    }
 
     if (expression instanceof SqlFragment) {
       // another Sql fragment? recursively compile this one
@@ -357,15 +359,22 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       result.text += expression.value;
     } else if (Array.isArray(expression)) {
       // an array's elements are compiled one by one -- note that an empty array can be used as a non-value
-      for (let i = 0, len = expression.length; i < len; i++) this.compileExpression(expression[i], result, parentTable, currentColumn);
+      for (let i = 0, len = expression.length; i < len; i++) {
+        this.compileExpression(expression[i], result, parentTable, currentColumn);
+      }
     } else if (expression instanceof Parameter) {
       // parameters become placeholders, and a corresponding entry in the values array
-      const placeholder = `$${String(result.values.length + 1)}`, // 1-based indexing
-        config = getConfig();
+      const placeholder = `$${String(result.values.length + 1)}`; // 1-based indexing
+      const config = getConfig();
 
       if (
         (expression.cast !== false && (expression.cast === true || config.castArrayParamsToJson) && Array.isArray(expression.value)) ||
-        (expression.cast !== false && (expression.cast === true || config.castObjectParamsToJson) && isPOJO(expression.value))
+        (expression.cast !== false &&
+          (expression.cast === true || config.castObjectParamsToJson) &&
+          typeof expression.value === "object" &&
+          expression.value !== null &&
+          expression.value.constructor === Object &&
+          expression.value.toString() === "[object Object]")
       ) {
         result.values.push(JSON.stringify(expression.value));
         result.text += `CAST(${placeholder} AS "json")`;
@@ -381,11 +390,15 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       result.text += "DEFAULT";
     } else if (expression === self) {
       // alias to the latest column, if applicable
-      if (!currentColumn) throw new Error(`The 'self' column alias has no meaning here`);
+      if (!currentColumn) {
+        throw new Error(`The 'self' column alias has no meaning here`);
+      }
       this.compileExpression(currentColumn, result);
     } else if (expression instanceof ParentColumn) {
       // alias to the parent table (plus optional supplied column name) of a nested query, if applicable
-      if (!parentTable) throw new Error(`The 'parent' table alias has no meaning here`);
+      if (!parentTable) {
+        throw new Error(`The 'parent' table alias has no meaning here`);
+      }
       this.compileExpression(parentTable, result);
       result.text += ".";
       this.compileExpression(expression.value ?? currentColumn!, result);
@@ -394,8 +407,10 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       // OR a ColumnNames-wrapped array -> quoted array values
       const columnNames = Array.isArray(expression.value) ? expression.value : Object.keys(expression.value).sort();
 
-      for (let i = 0, len = columnNames.length; i < len; i++) {
-        if (i > 0) result.text += ", ";
+      for (let i = 0, length = columnNames.length; i < length; i++) {
+        if (i > 0) {
+          result.text += ", ";
+        }
         this.compileExpression(String(columnNames[i]), result);
       }
     } else if (expression instanceof ColumnValues) {
@@ -404,7 +419,8 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
 
       if (Array.isArray(expression.value)) {
         const values: any[] = expression.value;
-        for (let i = 0, len = values.length; i < len; i++) {
+
+        for (let i = 0, length = values.length; i < length; i++) {
           const value = values[i];
 
           if (i > 0) {
@@ -431,7 +447,9 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
 
           if (columnValue instanceof SqlFragment || columnValue instanceof Parameter || columnValue === Default) {
             this.compileExpression(columnValue, result, parentTable, columnName);
-          } else this.compileExpression(new Parameter(columnValue), result, parentTable, columnName);
+          } else {
+            this.compileExpression(new Parameter(columnValue), result, parentTable, columnName);
+          }
         }
       }
     } else if (typeof expression === "object") {
@@ -445,8 +463,9 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
         result.text += "(";
 
         for (let i = 0, len = columnNames.length; i < len; i++) {
-          const columnName = columnNames[i],
-            columnValue = (<any>expression)[columnName!];
+          const columnName = columnNames[i];
+          const columnValue = (<any>expression)[columnName!];
+
           if (i > 0) {
             result.text += " AND ";
           }

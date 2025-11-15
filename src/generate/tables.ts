@@ -1,4 +1,4 @@
-import * as pg from "pg";
+import type * as pg from "pg";
 import { tsTypeForPgType } from "./pg-types";
 import type { EnumData } from "./enums";
 import type { CustomTypes } from "./ts-output";
@@ -116,7 +116,7 @@ export async function definitionForRelationInSchema(
     const columnDoc = createColumnDoc(config, schemaName, rel, row);
     const schemaPrefix = config.unprefixedSchema === schemaName ? "" : `${schemaName}.`;
     const prefixedRelName = schemaPrefix + rel.name;
-    const columnOptions = (config.columnOptions[prefixedRelName] && config.columnOptions[prefixedRelName][column]) ?? (config.columnOptions["*"] && config.columnOptions["*"][column]);
+    const columnOptions = config.columnOptions[prefixedRelName]?.[column] ?? config.columnOptions["*"]?.[column];
     const isInsertable = rel.insertable && !isGenerated && columnOptions?.insert !== "excluded";
     const isUpdatable = rel.insertable && !isGenerated && columnOptions?.update !== "excluded";
     const insertablyOptional = isNullable || hasDefault || columnOptions?.insert === "optional" ? "?" : "";
@@ -137,7 +137,7 @@ export async function definitionForRelationInSchema(
       const customType: string = domainName ?? udtName;
       const prefixedCustomType = transformCustomType(customType, config);
       Object.assign(customTypes, { [prefixedCustomType]: selectableType });
-      selectableType = JSONSelectableType = whereableType = insertableType = updatableType = "c." + prefixedCustomType;
+      selectableType = JSONSelectableType = whereableType = insertableType = updatableType = `c.${prefixedCustomType}`;
     }
 
     selectables.push(`${columnDoc}${possiblyQuotedColumn}: ${selectableType}${orNull};`);
@@ -203,7 +203,7 @@ export namespace ${rel.name} {
   export interface Updatable {
     ${updatables.length > 0 ? updatables.join("\n    ") : `[key: string]: never;`}
   }
-  export type UniqueIndex = ${uniqueIndexes.length > 0 ? uniqueIndexes.map((ui) => "'" + ui.indexname + "'").join(" | ") : "never"};
+  export type UniqueIndex = ${uniqueIndexes.length > 0 ? uniqueIndexes.map((ui) => `'${ui.indexname}'`).join(" | ") : "never"};
   export type Column = keyof Selectable;
   export type OnlyCols<T extends readonly Column[]> = Pick<Selectable, T[number]>;
   export type SqlExpression = Table | db.ColumnNames<Updatable | (keyof Updatable)[]> | db.ColumnValues<Updatable> | Whereable | Column | db.ParentColumn | db.GenericSqlExpression;
@@ -223,18 +223,18 @@ function transformCustomType(customType: string, config: CompleteConfig): string
   }
 
   if (ctt === "PgMyType") {
-    return ("Pg_" + legalisedType).replace(/_[^_]/g, (m) => m.charAt(1).toUpperCase());
+    return `Pg_${legalisedType}`.replace(/_[^_]/g, (m) => m.charAt(1).toUpperCase());
   }
 
   if (ctt === "PgMy_type") {
-    return "Pg" + underscoredType.charAt(0).toUpperCase() + underscoredType.slice(1);
+    return `Pg${underscoredType.charAt(0).toUpperCase()}${underscoredType.slice(1)}`;
   }
 
   return ctt(customType);
 }
 
 const tableMappedUnion = (arr: Relation[], suffix: string) => (arr.length === 0 ? "never" : arr.map((rel) => `${rel.name}.${suffix}`).join(" | "));
-const tableMappedArray = (arr: Relation[], suffix: string) => "[" + arr.map((rel) => `${rel.name}.${suffix}`).join(", ") + "]";
+const tableMappedArray = (arr: Relation[], suffix: string) => `[${arr.map((rel) => `${rel.name}.${suffix}`).join(", ")}]`;
 
 export const crossTableTypesForTables = (tables: Relation[]) => `${
   tables.length === 0 ? "\n// `never` rather than `any` types would be more accurate in this no-tables case, but they stop `shortcuts.ts` compiling\n" : ""
@@ -286,7 +286,7 @@ export type ${thingable}ForTable<T extends Table> = ${
     .join("");
 
 const schemaMappedUnion = (arr: string[], suffix: string) => (arr.length === 0 ? "any" : arr.map((s) => `${s}.${suffix}`).join(" | "));
-const schemaMappedArray = (arr: string[], suffix: string) => "[" + arr.map((s) => `...${s}.${suffix}`).join(", ") + "]";
+const schemaMappedArray = (arr: string[], suffix: string) => `[${arr.map((s) => `...${s}.${suffix}`).join(", ")}]`;
 
 export const crossSchemaTypesForSchemas = (schemas: string[]) => `
 export type Schema = ${schemas.map((s) => `'${s}'`).join(" | ")};
@@ -314,7 +314,7 @@ const createColumnDoc = (config: CompleteConfig, schemaName: string, rel: Relati
   const { column, isGenerated, isNullable, hasDefault, defaultValue, udtName, domainName, description } = columnDetails;
 
   const doc = `/**
-    * **${schemaPrefix}${rel.name}.${column}**${description ? "\n    *\n    * " + description : ""}
+    * **${schemaPrefix}${rel.name}.${column}**${description ? `\n    *\n    * ${description}` : ""}
     * - ${domainName ? `\`${domainName}\` (base type: \`${udtName ?? "(none)"}\`)` : `\`${udtName ?? "(none)"}\``} in database
     * - ${
       rel.type === "mview"

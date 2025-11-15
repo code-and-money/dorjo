@@ -10,18 +10,18 @@ const { MAX_SAFE_INTEGER, MIN_SAFE_INTEGER } = Number;
 
 function parseJsonWithLargeNumbersAsStrings(str: string) {
   return parse(str, undefined, function (_k, str) {
-    const n = Number(str); // JSON parser ensures this is an ordinary number, parseInt(str, 10) not needed
+    const num = Number(str); // JSON parser ensures this is an ordinary number, parseInt(str, 10) not needed
 
-    if (n === Infinity || n === -Infinity) {
+    if (num === Infinity || num === -Infinity) {
       return str;
     }
 
-    if ((n < MIN_SAFE_INTEGER || n > MAX_SAFE_INTEGER) && str.indexOf(".") === -1) {
+    if ((num < MIN_SAFE_INTEGER || num > MAX_SAFE_INTEGER) && str.indexOf(".") === -1) {
       return str;
     }
 
-    if (str.length <= 15 || numericStringToExponential(str) === n.toExponential()) {
-      return n;
+    if (str.length <= 15 || numericStringToExponential(str) === num.toExponential()) {
+      return num;
     }
 
     return str;

@@ -35,13 +35,15 @@ const sourceFilesForCustomTypes = (customTypes: CustomTypes) =>
       customTypeHeader +
         declareModule(
           "zbs/custom",
-          (baseType === "db.JsonValue" ? `import type * as db from 'zbs/db';\n` : ``) + `export type ${name} = ${baseType};  // replace with your custom type or interface as desired`,
+          `${baseType === "db.JsonValue" ? `import type * as db from 'zbs/db';\n` : ``}export type ${name} = ${baseType};  // replace with your custom type or interface as desired`,
         ),
     ]),
   );
 
 function indentAll(level: number, s: string) {
-  if (level === 0) return s;
+  if (level === 0) {
+    return s;
+  }
   return s.replace(/^/gm, " ".repeat(level));
 }
 
@@ -49,9 +51,9 @@ export const tsForConfig = async (config: CompleteConfig, debug: (s: string) => 
   let querySeq = 0;
   const { schemas, db } = config;
   const pool = new pg.Pool(db);
-
   const customTypes = {};
   const schemaNames = Object.keys(schemas);
+
   const queryFn = async (query: pg.QueryConfig, seq = querySeq++) => {
     try {
       debug(`>>> query ${seq} >>>\n${query.text.replace(/^\s+|\s+$/gm, "")}\n+ ${JSON.stringify(query.values)}\n`);
@@ -63,34 +65,35 @@ export const tsForConfig = async (config: CompleteConfig, debug: (s: string) => 
       process.exit(1);
     }
   };
+
   const schemaData = await Promise.all(
     schemaNames.map(async (schema) => {
-      const rules = schemas[schema],
-        tables =
-          rules?.exclude === "*"
-            ? []
-            : // exclude takes precedence
-              (await relationsInSchema(schema, queryFn))
-                .filter((rel) => rules?.include === "*" || rules?.include?.indexOf(rel.name)! >= 0)
-                .filter((rel) => rules?.exclude.indexOf(rel.name)! < 0),
-        enums = await enumDataForSchema(schema, queryFn),
-        tableDefs = await Promise.all(tables.map(async (table) => definitionForRelationInSchema(table, schema, enums, customTypes, config, queryFn))),
-        schemaIsUnprefixed = schema === config.unprefixedSchema,
-        none = "/* (none) */",
-        schemaDef =
-          `/* === schema: ${schema} === */\n` +
-          (schemaIsUnprefixed ? "" : `\nexport namespace ${schema} {\n`) +
-          indentAll(
-            schemaIsUnprefixed ? 0 : 2,
-            `\n/* --- enums --- */\n` +
-              (enumTypesForEnumData(enums) || none) +
-              `\n\n/* --- tables --- */\n` +
-              (tableDefs.join("\n") || none) +
-              `\n\n/* --- aggregate types --- */\n` +
-              (schemaIsUnprefixed ? `\nexport namespace ${schema} {` + indentAll(2, crossTableTypesForTables(tables) || none) + "\n}\n" : crossTableTypesForTables(tables) || none),
-          ) +
-          "\n" +
-          (schemaIsUnprefixed ? "" : `}\n`);
+      const rules = schemas[schema];
+      const tables =
+        rules?.exclude === "*"
+          ? []
+          : // exclude takes precedence
+            (await relationsInSchema(schema, queryFn))
+              .filter((rel) => rules?.include === "*" || rules?.include?.indexOf(rel.name)! >= 0)
+              .filter((rel) => rules?.exclude.indexOf(rel.name)! < 0);
+      const enums = await enumDataForSchema(schema, queryFn);
+      const tableDefs = await Promise.all(tables.map(async (table) => definitionForRelationInSchema(table, schema, enums, customTypes, config, queryFn)));
+      const schemaIsUnprefixed = schema === config.unprefixedSchema;
+      const none = "/* (none) */";
+      const schemaDef =
+        `/* === schema: ${schema} === */\n` +
+        (schemaIsUnprefixed ? "" : `\nexport namespace ${schema} {\n`) +
+        indentAll(
+          schemaIsUnprefixed ? 0 : 2,
+          `\n/* --- enums --- */\n` +
+            (enumTypesForEnumData(enums) || none) +
+            `\n\n/* --- tables --- */\n` +
+            (tableDefs.join("\n") || none) +
+            `\n\n/* --- aggregate types --- */\n` +
+            (schemaIsUnprefixed ? `\nexport namespace ${schema} {${indentAll(2, crossTableTypesForTables(tables) || none)}\n}\n` : crossTableTypesForTables(tables) || none),
+        ) +
+        "\n" +
+        (schemaIsUnprefixed ? "" : `}\n`);
 
       return { schemaDef, tables };
     }),

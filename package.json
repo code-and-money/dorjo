@@ -1,31 +1,8 @@
 {
   "name": "zaebis",
-  "publishConfig": {
-    "access": "public"
-  },
-  "version": "0.0.0-dev.2",
+  "version": "0.0.0-dev.3",
+  "private": true,
   "description": "Zero-Abstraction Postgres for TypeScript",
-  "bin": {
-    "zbs": "dist/generate/cli.js"
-  },
-  "scripts": {
-    "build": "npx tsc && npx gen-esm-wrapper db db.mjs && npx gen-esm-wrapper generate generate.mjs",
-    "version": " pm run build",
-    "postversion": "git push && git push --tags && npm publish",
-    "postinstall": "node -e \"console.warn('>>> \\u001b[1;33mZbs was installed or upgraded. Please (re-)run \\u001b[1;32mnpx zbs\\u001b[1;33m.\\u001b[0m <<<\\u000a')\""
-  },
-  "exports": {
-    "./db": {
-      "types": "./db.d.ts",
-      "require": "./db.js",
-      "import": "./db.mjs"
-    },
-    "./generate": {
-      "types": "./generate.d.ts",
-      "require": "./generate.js",
-      "import": "./generate.mjs"
-    }
-  },
   "keywords": [
     "postgres",
     "typescript",
@@ -33,24 +10,34 @@
     "sql"
   ],
   "license": "MIT",
+  "exports": {
+    "./db": "./dist/db/index.js",
+    "./generate": "./dist/generate.js"
+  },
+  "bin": {
+    "zbs": "dist/generate/cli.js"
+  },
+  "scripts": {
+    "build": "bunx tsc",
+    "postinstall": "bun --eval \"console.warn('>>> \\u001b[1;33mZbs was installed or upgraded. Please (re-)run \\u001b[1;32mnpx zbs\\u001b[1;33m.\\u001b[0m <<<\\u000a')\"",
+    "version": "pm run build",
+    "postversion": "git push && git push --tags && npm publish"
+  },
+  "dependencies": {
+    "json-custom-numbers": "^3.1.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.6.5",
+    "pg": "^8.7.3",
+    "typescript": "^5.9.3"
+  },
   "peerDependencies": {
     "@types/pg": ">=7.14.3",
     "pg": ">=7.18.2",
     "typescript": ">=4.1"
   },
-  "overrides": {
-    "eslint": "^9.5.0"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.6.5",
-    "gen-esm-wrapper": "^1.1.3",
-    "globals": "^15.6.0",
-    "pg": "^8.7.3",
-    "typescript": "^5.9.3",
-    "@types/bun": "latest"
-  },
-  "dependencies": {
-    "json-custom-numbers": "^3.1.1"
-  },
-  "private": true
+  "publishConfig": {
+    "access": "public"
+  }
 }

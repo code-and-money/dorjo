@@ -165,6 +165,7 @@ export async function transaction<T, M extends IsolationLevel>(
 export async function serializable<T>(txnClientOrQueryable: Queryable | TxnClientForSerializable, callback: (client: TxnClientForSerializable) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.Serializable, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `RepeatableRead`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
@@ -175,6 +176,7 @@ export async function serializable<T>(txnClientOrQueryable: Queryable | TxnClien
 export async function repeatableRead<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableRead, callback: (client: TxnClientForRepeatableRead) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableRead, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `ReadCommitted`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
@@ -185,6 +187,7 @@ export async function repeatableRead<T>(txnClientOrQueryable: Queryable | TxnCli
 export async function readCommitted<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommitted, callback: (client: TxnClientForReadCommitted) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommitted, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `SerializableRO`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
@@ -195,6 +198,7 @@ export async function readCommitted<T>(txnClientOrQueryable: Queryable | TxnClie
 export async function serializableRO<T>(txnClientOrQueryable: Queryable | TxnClientForSerializableRO, callback: (client: TxnClientForSerializableRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.SerializableRO, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `RepeatableReadRO`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
@@ -205,6 +209,7 @@ export async function serializableRO<T>(txnClientOrQueryable: Queryable | TxnCli
 export async function repeatableReadRO<T>(txnClientOrQueryable: Queryable | TxnClientForRepeatableReadRO, callback: (client: TxnClientForRepeatableReadRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.RepeatableReadRO, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `ReadCommittedRO`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,
@@ -215,6 +220,7 @@ export async function repeatableReadRO<T>(txnClientOrQueryable: Queryable | TxnC
 export async function readCommittedRO<T>(txnClientOrQueryable: Queryable | TxnClientForReadCommittedRO, callback: (client: TxnClientForReadCommittedRO) => Promise<T>) {
   return transaction(txnClientOrQueryable, IsolationLevel.ReadCommittedRO, callback);
 }
+
 /**
  * Shortcut for `transaction` with isolation level `SerializableRODeferrable`.
  * @param txnClientOrQueryable The `pg.Pool` from which to check out a client,

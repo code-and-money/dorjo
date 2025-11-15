@@ -57,8 +57,8 @@ const defaultConfig: Config = {
 };
 
 export const moduleRoot = () => {
-  // __dirname could be either ./generate (ts) or ./dist/generate (js)
-  const parentDir = path.join(__dirname, "..");
+  // import.meta.dirname could be either ./generate (ts) or ./dist/generate (js)
+  const parentDir = path.join(import.meta.dirname, "..");
   return fs.existsSync(path.join(parentDir, "package.json")) ? parentDir : path.join(parentDir, "..");
 };
 

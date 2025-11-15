@@ -10,7 +10,9 @@ function recursivelyInterpolateEnvVars(obj: any): any {
   if (typeof obj === "string") {
     return obj.replace(/\{\{\s*([^}\s]+)\s*\}\}/g, (_0, name) => {
       const e = process.env[name];
-      if (e === undefined) throw new Error(`Environment variable '${name}' is not set`);
+      if (e === undefined) {
+        throw new Error(`Environment variable '${name}' is not set`);
+      }
       return e;
     });
   }
@@ -23,7 +25,7 @@ function recursivelyInterpolateEnvVars(obj: any): any {
   // object? => recurse over its values (but don't touch the keys)
   if (obj !== null && typeof obj === "object") {
     return Object.keys(obj).reduce<any>((memo, key) => {
-      memo[key] = recursivelyInterpolateEnvVars(obj[key]);
+      Object.assign(memo, { [key]: recursivelyInterpolateEnvVars(obj[key]) });
       return memo;
     }, {});
   }

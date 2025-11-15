@@ -9,7 +9,7 @@ import { header } from "./header";
  * Generate a schema and supporting files and folders given a configuration.
  * @param suppliedConfig An object approximately matching `zbsconfig.json`.
  */
-export const generate = async (suppliedConfig: Config) => {
+export async function generate(suppliedConfig: Config) {
   const config = finaliseConfig(suppliedConfig);
   const log = config.progressListener === true ? console.log : config.progressListener || (() => void 0);
   const warn = config.warningListener === true ? console.log : config.warningListener || (() => void 0);
@@ -19,17 +19,17 @@ export const generate = async (suppliedConfig: Config) => {
   const schemaName = `schema${config.outExt}`;
   const customFolderName = "custom";
   const customTypesIndexName = `index${config.outExt}`;
+  const folderTargetPath = path.join(config.outDir, folderName);
+  const schemaTargetPath = path.join(folderTargetPath, schemaName);
+  const customFolderTargetPath = path.join(folderTargetPath, customFolderName);
+  const customTypesIndexTargetPath = path.join(customFolderTargetPath, customTypesIndexName);
+
   const customTypesIndexContent =
     header() +
     `
 // this empty declaration appears to fix relative imports in other custom type files
 declare module 'zbs/custom' { }
 `;
-
-  const folderTargetPath = path.join(config.outDir, folderName);
-  const schemaTargetPath = path.join(folderTargetPath, schemaName);
-  const customFolderTargetPath = path.join(folderTargetPath, customFolderName);
-  const customTypesIndexTargetPath = path.join(customFolderTargetPath, customTypesIndexName);
 
   log(`(Re)creating schema folder: ${schemaTargetPath}`);
   fs.mkdirSync(folderTargetPath, { recursive: true });
@@ -42,6 +42,7 @@ declare module 'zbs/custom' { }
 
     for (const customTypeFileName in customTypeSourceFiles) {
       const customTypeFilePath = path.join(customFolderTargetPath, customTypeFileName + config.outExt);
+
       if (fs.existsSync(customTypeFilePath)) {
         log(`Custom type or domain declaration file already exists: ${customTypeFilePath}`);
       } else {
@@ -56,4 +57,4 @@ declare module 'zbs/custom' { }
   }
 
   legacy.srcWarning(config);
-};
+}

@@ -70,7 +70,7 @@ export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrU
       return new Date(d);
 
     case "UTC":
-      return new Date(d + "Z");
+      return new Date(`${d}Z`);
 
     case "local": {
       // new Date() interprets 'yyyy-mm-dd' as UTC but 'yyyy-mm-ddT00:00' as local
@@ -87,20 +87,18 @@ export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrU
   }
 };
 
-interface ToString {
-  <D extends Date | null, T extends "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`>(
-    d: D,
-    stringTypeTz: T,
-  ): D extends null
-    ? null
-    : {
-        timestamptz: TimestampTzString;
-        "timestamp:UTC": TimestampString;
-        "timestamp:local": TimestampString;
-        "date:UTC": DateString;
-        "date:local": DateString;
-      }[T];
-}
+type ToString = <D extends Date | null, T extends "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`>(
+  d: D,
+  stringTypeTz: T,
+) => D extends null
+  ? null
+  : {
+      timestamptz: TimestampTzString;
+      "timestamp:UTC": TimestampString;
+      "timestamp:local": TimestampString;
+      "date:UTC": DateString;
+      "date:local": DateString;
+    }[T];
 
 /**
  * Convert a JavaScript `Date` to a `TimestampTzString`, `TimestampString` or
@@ -117,29 +115,30 @@ interface ToString {
  * and (except for `timestamptz`) whether to express in UTC or local time. For
  * example: `"timestamptz"`, `"timestamp:local"` or `"date:UTC"`.
  */
-export const toString: ToString = function (d: Date | null, stringTypeTz: "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`): any {
-  if (d === null) {
+export const toString: ToString = function (date: Date | null, stringTypeTz: "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`): any {
+  if (date === null) {
     return null;
   }
 
   if (stringTypeTz === "timestamptz") {
-    return d.toISOString();
+    return date.toISOString();
   }
 
   const [stringType, tz] = stringTypeTz.split(":");
+
   const utc = tz === "UTC";
-  const year = pad(utc ? d.getUTCFullYear() : d.getFullYear(), 4);
-  const month = pad((utc ? d.getUTCMonth() : d.getMonth()) + /* cRaZY jS */ 1);
-  const day = pad(utc ? d.getUTCDate() : d.getDate());
+  const year = pad(utc ? date.getUTCFullYear() : date.getFullYear(), 4);
+  const month = pad((utc ? date.getUTCMonth() : date.getMonth()) + /* cRaZY jS */ 1);
+  const day = pad(utc ? date.getUTCDate() : date.getDate());
 
   if (stringType === "date") {
     return `${year}-${month}-${day}`;
   }
 
-  const hour = pad(utc ? d.getUTCHours() : d.getHours());
-  const min = pad(utc ? d.getUTCMinutes() : d.getMinutes());
-  const sec = pad(utc ? d.getUTCSeconds() : d.getSeconds());
-  const ms = pad(utc ? d.getUTCMilliseconds() : d.getMilliseconds(), 3);
+  const hour = pad(utc ? date.getUTCHours() : date.getHours());
+  const min = pad(utc ? date.getUTCMinutes() : date.getMinutes());
+  const sec = pad(utc ? date.getUTCSeconds() : date.getSeconds());
+  const ms = pad(utc ? date.getUTCMilliseconds() : date.getMilliseconds(), 3);
 
   return `${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}`;
 };

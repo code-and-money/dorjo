@@ -116,7 +116,6 @@ export const tsTypeForPgType = (pgType: string, enums: EnumData, context: TypeCo
   // see https://www.postgresql.org/docs/current/sql-createtype.html#id-1.9.3.94.5.9
   if (pgType.charAt(0) === "_") {
     const arrayTsType = baseTsTypeForBasePgType(pgType.slice(1), enums, context, config);
-
     if (arrayTsType !== null) {
       return `${arrayTsType}[]`;
     }
