@@ -7,7 +7,7 @@ import { header } from "./header";
 
 /**
  * Generate a schema and supporting files and folders given a configuration.
- * @param suppliedConfig An object approximately matching `zbsconfig.json`.
+ * @param suppliedConfig An object approximately matching `dorjoconfig.json`.
  */
 export async function generate(suppliedConfig: Config) {
   const config = finaliseConfig(suppliedConfig);
@@ -15,7 +15,7 @@ export async function generate(suppliedConfig: Config) {
   const warn = config.warningListener === true ? console.log : config.warningListener || (() => void 0);
   const debug = config.debugListener === true ? console.log : config.debugListener || (() => void 0);
   const { ts, customTypeSourceFiles } = await tsForConfig(config, debug);
-  const folderName = "zbs";
+  const folderName = "dorjo";
   const schemaName = `schema${config.outExt}`;
   const customFolderName = "custom";
   const customTypesIndexName = `index${config.outExt}`;
@@ -28,7 +28,7 @@ export async function generate(suppliedConfig: Config) {
     header() +
     `
 // this empty declaration appears to fix relative imports in other custom type files
-declare module 'zbs/custom' { }
+declare module 'dorjo/custom' { }
 `;
 
   log(`(Re)creating schema folder: ${schemaTargetPath}`);

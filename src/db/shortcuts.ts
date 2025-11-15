@@ -11,7 +11,7 @@ import type {
   Whereable,
   Table,
   Column,
-} from "zbs/schema";
+} from "dorjo/schema";
 import { type AllType, all, type Sql, SqlFragment, sql, cols, vals, raw, param, Default } from "./core";
 import { completeKeysWithDefaultValue, mapWithSeparator, type NoInfer } from "./utils";
 

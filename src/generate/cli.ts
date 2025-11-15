@@ -35,7 +35,7 @@ function recursivelyInterpolateEnvVars(obj: any): any {
 }
 
 void (async () => {
-  const configFile = "zbsconfig.json";
+  const configFile = "dorjoconfig.json";
   const configJSON = fs.existsSync(configFile) ? fs.readFileSync(configFile, { encoding: "utf8" }) : "{}";
   const argsJSON = process.argv[2] ?? "{}";
 
@@ -43,14 +43,14 @@ void (async () => {
   try {
     fileConfig = recursivelyInterpolateEnvVars(JSON.parse(configJSON));
   } catch (err: any) {
-    throw new Error(`If present, zbsconfig.json must be a valid JSON file, and all referenced environment variables must exist: ${err.message}`);
+    throw new Error(`If present, dorjoconfig.json must be a valid JSON file, and all referenced environment variables must exist: ${err.message}`);
   }
 
   let argsConfig;
   try {
     argsConfig = recursivelyInterpolateEnvVars(JSON.parse(argsJSON));
   } catch (err: any) {
-    throw new Error(`If present, the argument to Zbs must be valid JSON, and all referenced environment variables must exist: ${err.message}`);
+    throw new Error(`If present, the argument to Dorjo must be valid JSON, and all referenced environment variables must exist: ${err.message}`);
   }
 
   await generate({ ...fileConfig, ...argsConfig } as Config);

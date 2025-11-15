@@ -28,7 +28,7 @@ export type IsolationSatisfying<T extends IsolationLevel> = {
 }[T];
 
 export interface TxnClient<T extends IsolationLevel> extends pg.PoolClient {
-  _zbs?: {
+  _dorjo?: {
     isolationLevel: T;
     txnId: number;
   };
@@ -91,7 +91,7 @@ export async function transaction<T, M extends IsolationLevel>(
   isolationLevel: M,
   callback: (client: TxnClient<IsolationSatisfying<M>>) => Promise<T>,
 ): Promise<T> {
-  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, "_zbs")) {
+  if (Object.prototype.hasOwnProperty.call(txnClientOrQueryable, "_dorjo")) {
     // if txnClientOrQueryable is a TxnClient, just pass it through
     return callback(txnClientOrQueryable as TxnClient<IsolationSatisfying<M>>);
   }
@@ -102,7 +102,7 @@ export async function transaction<T, M extends IsolationLevel>(
   const clientIsOurs = typeofQueryable(txnClientOrQueryable) === "pool";
   const txnClient = (clientIsOurs ? await txnClientOrQueryable.connect() : txnClientOrQueryable) as TxnClient<M>;
 
-  txnClient._zbs = { isolationLevel, txnId };
+  txnClient._dorjo = { isolationLevel, txnId };
 
   const config = getConfig();
   const { transactionListener } = config;
@@ -148,7 +148,7 @@ export async function transaction<T, M extends IsolationLevel>(
       }
     }
   } finally {
-    delete txnClient._zbs;
+    delete txnClient._dorjo;
     if (clientIsOurs) {
       txnClient.release();
     }

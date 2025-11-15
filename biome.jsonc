@@ -46,6 +46,10 @@
       "correctness": {
         "noUnusedVariables": "off",
         "noVoidTypeReturn": "off"
+      },
+
+      "style": {
+        "useBlockStatements": "error"
       }
     }
   },
