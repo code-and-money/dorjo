@@ -15,11 +15,10 @@ export async function generate(suppliedConfig: Config) {
   const warn = config.warningListener === true ? console.log : config.warningListener || (() => void 0);
   const debug = config.debugListener === true ? console.log : config.debugListener || (() => void 0);
   const { ts, customTypeSourceFiles } = await tsForConfig(config, debug);
-  const folderName = "dorjo";
-  const schemaName = `schema${config.outExt}`;
+  const schemaName = `dorjo.schema${config.outExt}`;
   const customFolderName = "custom";
   const customTypesIndexName = `index${config.outExt}`;
-  const folderTargetPath = path.join(config.outDir, folderName);
+  const folderTargetPath = path.join(config.outDir);
   const schemaTargetPath = path.join(folderTargetPath, schemaName);
   const customFolderTargetPath = path.join(folderTargetPath, customFolderName);
   const customTypesIndexTargetPath = path.join(customFolderTargetPath, customTypesIndexName);
@@ -28,7 +27,7 @@ export async function generate(suppliedConfig: Config) {
     header() +
     `
 // this empty declaration appears to fix relative imports in other custom type files
-declare module 'dorjo/custom' { }
+declare module '@codeandmoney/dorjo/custom' { }
 `;
 
   log(`(Re)creating schema folder: ${schemaTargetPath}`);

@@ -1,7 +1,7 @@
 import type { CompleteConfig } from "./config";
 import type { EnumData } from "./enums";
 
-type TypeContext = "JSONSelectable" | "Selectable" | "Insertable" | "Updatable" | "Whereable";
+type TypeContext = "JsonSelectable" | "Selectable" | "Insertable" | "Updatable" | "Whereable";
 
 let warnedAboutInt8AndNumeric = false;
 
@@ -10,7 +10,7 @@ const baseTsTypeForBasePgType = (pgType: string, enums: EnumData, context: TypeC
   const warn = config.warningListener === true ? console.log : config.warningListener || (() => void 0);
 
   function warnAboutLargeNumbers() {
-    if (warnedAboutInt8AndNumeric || config.customJSONParsingForLargeNumbers) {
+    if (warnedAboutInt8AndNumeric || config.customJsonParsingForLargeNumbers) {
       return;
     }
     warn(
@@ -21,13 +21,13 @@ const baseTsTypeForBasePgType = (pgType: string, enums: EnumData, context: TypeC
 
   switch (pgType) {
     case "money":
-      return context === "JSONSelectable" || context === "Selectable" ? "string" : "(number | string)";
+      return context === "JsonSelectable" || context === "Selectable" ? "string" : "(number | string)";
 
     case "int8": {
       warnAboutLargeNumbers();
 
-      if (context === "JSONSelectable") {
-        return config.customJSONParsingForLargeNumbers ? "(number | db.Int8String)" : "number";
+      if (context === "JsonSelectable") {
+        return config.customJsonParsingForLargeNumbers ? "(number | db.Int8String)" : "number";
       }
 
       return context === "Selectable" ? "db.Int8String" : "(number | db.Int8String | bigint)";
@@ -36,7 +36,7 @@ const baseTsTypeForBasePgType = (pgType: string, enums: EnumData, context: TypeC
     case "numeric": {
       warnAboutLargeNumbers();
 
-      if (context === "JSONSelectable") {
+      if (context === "JsonSelectable") {
         return;
       }
 
@@ -44,16 +44,16 @@ const baseTsTypeForBasePgType = (pgType: string, enums: EnumData, context: TypeC
     }
 
     case "bytea":
-      return context === "JSONSelectable" ? "db.ByteArrayString" : context === "Selectable" ? "Buffer" : "(db.ByteArrayString | Buffer)";
+      return context === "JsonSelectable" ? "db.ByteArrayString" : context === "Selectable" ? "Buffer" : "(db.ByteArrayString | Buffer)";
 
     case "date":
-      return context === "JSONSelectable" ? "db.DateString" : context === "Selectable" ? "Date" : "(db.DateString | Date)";
+      return context === "JsonSelectable" ? "db.DateString" : context === "Selectable" ? "Date" : "(db.DateString | Date)";
 
     case "timestamp":
-      return context === "JSONSelectable" ? "db.TimestampString" : context === "Selectable" ? "Date" : "(db.TimestampString | Date)";
+      return context === "JsonSelectable" ? "db.TimestampString" : context === "Selectable" ? "Date" : "(db.TimestampString | Date)";
 
     case "timestamptz":
-      return context === "JSONSelectable" ? "db.TimestampTzString" : context === "Selectable" ? "Date" : "(db.TimestampTzString | Date)";
+      return context === "JsonSelectable" ? "db.TimestampTzString" : context === "Selectable" ? "Date" : "(db.TimestampTzString | Date)";
 
     case "time":
       return "db.TimeString";

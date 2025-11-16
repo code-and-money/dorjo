@@ -36,19 +36,19 @@ function recursivelyInterpolateEnvVars(obj: any): any {
 
 void (async () => {
   const configFile = "dorjoconfig.json";
-  const configJSON = fs.existsSync(configFile) ? fs.readFileSync(configFile, { encoding: "utf8" }) : "{}";
-  const argsJSON = process.argv[2] ?? "{}";
+  const configJson = fs.existsSync(configFile) ? fs.readFileSync(configFile, { encoding: "utf8" }) : "{}";
+  const argsJson = process.argv[2] ?? "{}";
 
   let fileConfig;
   try {
-    fileConfig = recursivelyInterpolateEnvVars(JSON.parse(configJSON));
+    fileConfig = recursivelyInterpolateEnvVars(JSON.parse(configJson));
   } catch (err: any) {
     throw new Error(`If present, dorjoconfig.json must be a valid JSON file, and all referenced environment variables must exist: ${err.message}`);
   }
 
   let argsConfig;
   try {
-    argsConfig = recursivelyInterpolateEnvVars(JSON.parse(argsJSON));
+    argsConfig = recursivelyInterpolateEnvVars(JSON.parse(argsJson));
   } catch (err: any) {
     throw new Error(`If present, the argument to Dorjo must be valid JSON, and all referenced environment variables must exist: ${err.message}`);
   }

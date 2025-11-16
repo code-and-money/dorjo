@@ -11,11 +11,11 @@ import type {
   Whereable,
   Table,
   Column,
-} from "dorjo/schema";
+} from "@codeandmoney/dorjo/schema";
 import { type AllType, all, type Sql, SqlFragment, sql, cols, vals, raw, param, Default } from "./core";
 import { completeKeysWithDefaultValue, mapWithSeparator, type NoInfer } from "./utils";
 
-export type JSONOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
+export type JsonOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
   JsonSelectableForTable<T>,
   C[number]
 >;
@@ -57,7 +57,7 @@ export interface ReturningOptionsForTable<T extends Table, C extends ColumnsOpti
 type ReturningTypeForTable<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>> = (undefined extends C
   ? JsonSelectableForTable<T>
   : C extends ColumnForTable<T>[]
-    ? JSONOnlyColsForTable<T, C>
+    ? JsonOnlyColsForTable<T, C>
     : never) &
   (undefined extends E ? {} : E extends SqlFragmentOrColumnMap<T> ? ExtrasResult<T, E> : never);
 
@@ -208,7 +208,7 @@ export const upsert: UpsertSignatures = function (
   }
 
   const completedValues = Array.isArray(values) ? completeKeysWithDefaultValue(values, Default) : [values];
-  const firstRow = completedValues[0];
+  const firstRow = completedValues[0]!;
   const insertColsSql = cols(firstRow);
   const insertValuesSql = mapWithSeparator(completedValues, sql`, `, (v) => sql`(${vals(v)})`);
   const colNames = Object.keys(firstRow) as Column[];
@@ -489,7 +489,7 @@ export const select: SelectSignatures = function (
           if (o.nulls && !["FIRST", "LAST"].includes(o.nulls)) {
             throw new Error(`Nulls must be FIRST/LAST/undefined, not '${o.nulls}'`);
           }
-          return sql`${o.by} ${raw(o.direction)}${o.nulls ? sql` NULLS ${raw(o.nulls)}` : []}`;
+          return sql`${o.by as any} ${raw(o.direction)}${o.nulls ? sql` NULLS ${raw(o.nulls)}` : []}`;
         })}`;
 
   const limitSql = allOptions.limit === undefined ? [] : allOptions.withTies ? sql` FETCH FIRST ${param(allOptions.limit)} ROWS WITH TIES` : sql` LIMIT ${param(allOptions.limit)}`; // compatibility with pg pre-10.5; and fewer bytes!

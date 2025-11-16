@@ -18,7 +18,7 @@ export interface OptionalConfig {
   columnOptions: ColumnOptions;
   schemaJSDoc: boolean;
   unprefixedSchema: string | null;
-  customJSONParsingForLargeNumbers: boolean;
+  customJsonParsingForLargeNumbers: boolean;
 }
 
 interface SchemaRules {
@@ -53,7 +53,7 @@ const defaultConfig: Config = {
   columnOptions: {},
   schemaJSDoc: true,
   unprefixedSchema: "public",
-  customJSONParsingForLargeNumbers: false,
+  customJsonParsingForLargeNumbers: false,
 };
 
 export const moduleRoot = () => {

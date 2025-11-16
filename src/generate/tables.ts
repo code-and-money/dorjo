@@ -99,7 +99,7 @@ export async function definitionForRelationInSchema(
 ): Promise<string> {
   const rows = await columnsForRelation(rel, schemaName, queryFn);
   const selectables: string[] = [];
-  const JSONSelectables: string[] = [];
+  const JsonSelectables: string[] = [];
   const whereables: string[] = [];
   const insertables: string[] = [];
   const updatables: string[] = [];
@@ -108,7 +108,7 @@ export async function definitionForRelationInSchema(
     const { column, isGenerated, isNullable, hasDefault, udtName, domainName } = row;
 
     let selectableType = tsTypeForPgType(udtName, enums, "Selectable", config);
-    let JSONSelectableType = tsTypeForPgType(udtName, enums, "JSONSelectable", config);
+    let JsonSelectableType = tsTypeForPgType(udtName, enums, "JsonSelectable", config);
     let whereableType = tsTypeForPgType(udtName, enums, "Whereable", config);
     let insertableType = tsTypeForPgType(udtName, enums, "Insertable", config);
     let updatableType = tsTypeForPgType(udtName, enums, "Updatable", config);
@@ -137,11 +137,11 @@ export async function definitionForRelationInSchema(
       const customType: string = domainName ?? udtName;
       const prefixedCustomType = transformCustomType(customType, config);
       Object.assign(customTypes, { [prefixedCustomType]: selectableType });
-      selectableType = JSONSelectableType = whereableType = insertableType = updatableType = `c.${prefixedCustomType}`;
+      selectableType = JsonSelectableType = whereableType = insertableType = updatableType = `c.${prefixedCustomType}`;
     }
 
     selectables.push(`${columnDoc}${possiblyQuotedColumn}: ${selectableType}${orNull};`);
-    JSONSelectables.push(`${columnDoc}${possiblyQuotedColumn}: ${JSONSelectableType}${orNull};`);
+    JsonSelectables.push(`${columnDoc}${possiblyQuotedColumn}: ${JsonSelectableType}${orNull};`);
 
     const basicWhereableTypes = `${whereableType} | db.Parameter<${whereableType}> | db.SqlFragment | db.ParentColumn`;
     whereables.push(`${columnDoc}${possiblyQuotedColumn}?: ${basicWhereableTypes} | db.SqlFragment<any, ${basicWhereableTypes}>;`);
@@ -191,8 +191,8 @@ export namespace ${rel.name} {
   export interface Selectable {
     ${selectables.join("\n    ")}
   }
-  export interface JSONSelectable {
-    ${JSONSelectables.join("\n    ")}
+  export interface JsonSelectable {
+    ${JsonSelectables.join("\n    ")}
   }
   export interface Whereable {
     ${whereables.join("\n    ")}
@@ -241,7 +241,7 @@ export const crossTableTypesForTables = (tables: Relation[]) => `${
 }
 export type Table = ${tableMappedUnion(tables, "Table")};
 export type Selectable = ${tableMappedUnion(tables, "Selectable")};
-export type JSONSelectable = ${tableMappedUnion(tables, "JSONSelectable")};
+export type JsonSelectable = ${tableMappedUnion(tables, "JsonSelectable")};
 export type Whereable = ${tableMappedUnion(tables, "Whereable")};
 export type Insertable = ${tableMappedUnion(tables, "Insertable")};
 export type Updatable = ${tableMappedUnion(tables, "Updatable")};
@@ -267,7 +267,7 @@ export type AllMaterializedViews = ${tableMappedArray(
 export type AllTablesAndViews = ${tableMappedArray(tables, "Table")};`;
 
 export const crossSchemaTypesForAllTables = (allTables: Relation[], unprefixedSchema: string | null) =>
-  ["Selectable", "JSONSelectable", "Whereable", "Insertable", "Updatable", "UniqueIndex", "Column", "Sql"]
+  ["Selectable", "JsonSelectable", "Whereable", "Insertable", "Updatable", "UniqueIndex", "Column", "Sql"]
     .map(
       (thingable) => `
 export type ${thingable}ForTable<T extends Table> = ${
@@ -292,7 +292,7 @@ export const crossSchemaTypesForSchemas = (schemas: string[]) => `
 export type Schema = ${schemas.map((s) => `'${s}'`).join(" | ")};
 export type Table = ${schemaMappedUnion(schemas, "Table")};
 export type Selectable = ${schemaMappedUnion(schemas, "Selectable")};
-export type JSONSelectable = ${schemaMappedUnion(schemas, "JSONSelectable")};
+export type JsonSelectable = ${schemaMappedUnion(schemas, "JsonSelectable")};
 export type Whereable = ${schemaMappedUnion(schemas, "Whereable")};
 export type Insertable = ${schemaMappedUnion(schemas, "Insertable")};
 export type Updatable = ${schemaMappedUnion(schemas, "Updatable")};
