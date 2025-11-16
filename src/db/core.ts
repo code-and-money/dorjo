@@ -2,7 +2,6 @@ import type * as pg from "pg";
 
 import { getConfig, type SqlQuery } from "./config";
 import type { NoInfer } from "./utils";
-
 import type { Updatable, Whereable, Table, Column } from "dorjo/schema";
 
 const timing = typeof performance === "object" ? () => performance.now() : () => Date.now();
@@ -331,7 +330,7 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
 
     result.text += this.literals[0];
 
-    for (let i = 1, len = this.literals.length; i < len; i++) {
+    for (let i = 1, length = this.literals.length; i < length; i++) {
       this.compileExpression(this.expressions[i - 1]!, result, parentTable, currentColumn);
       result.text += this.literals[i];
     }
@@ -393,12 +392,14 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
       if (!currentColumn) {
         throw new Error(`The 'self' column alias has no meaning here`);
       }
+
       this.compileExpression(currentColumn, result);
     } else if (expression instanceof ParentColumn) {
       // alias to the parent table (plus optional supplied column name) of a nested query, if applicable
       if (!parentTable) {
         throw new Error(`The 'parent' table alias has no meaning here`);
       }
+
       this.compileExpression(parentTable, result);
       result.text += ".";
       this.compileExpression(expression.value ?? currentColumn!, result);

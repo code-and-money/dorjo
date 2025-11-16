@@ -107,9 +107,9 @@ export const tsForConfig = async (config: CompleteConfig, debug: (s: string) => 
   const ts =
     header() +
     declareModule(
-      "dorjo/schema",
-      `\nimport type * as db from 'dorjo/db';\n` +
-        (hasCustomTypes ? `import type * as c from 'dorjo/custom';\n` : ``) +
+      "@codeandmoney/dorjo/schema",
+      `\nimport type * as db from '@codeandmoney/dorjo/db';\n` +
+        (hasCustomTypes ? `import type * as c from '@codeandmoney/dorjo/custom';\n` : ``) +
         versionCanary +
         "\n\n" +
         schemaDefs.join("\n\n") +
