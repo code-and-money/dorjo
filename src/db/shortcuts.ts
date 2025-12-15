@@ -14,6 +14,7 @@ import type {
 } from "@codeandmoney/dorjo/schema";
 import { type AllType, all, type Sql, SqlFragment, sql, cols, vals, raw, param, Default } from "./core";
 import { completeKeysWithDefaultValue, completeKeysWithDefaultValueObject, mapWithSeparator, type NoInfer } from "./utils";
+import assert from "node:assert/strict";
 
 export type JsonOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
   JsonSelectableForTable<T>,
@@ -339,7 +340,7 @@ export const truncate: TruncateSignatures = function (table: Table | Table[], ..
 
 /* === select === */
 
-interface OrderSpecForTable<T extends Table> {
+export interface OrderSpecForTable<T extends Table> {
   by: SqlForTable<T>;
   direction: "ASC" | "DESC";
   nulls?: "FIRST" | "LAST";
@@ -355,7 +356,7 @@ export interface SelectLockingOptions<A extends string> {
 
 export interface SelectOptionsForTable<T extends Table, C extends ColumnsOption<T>, L extends LateralOption<C, E>, E extends ExtrasOption<T>, A extends string> {
   distinct?: boolean | ColumnForTable<T> | ColumnForTable<T>[] | SqlFragment<any>;
-  order?: OrderSpecForTable<T> | OrderSpecForTable<T>[];
+  order?: OrderSpecForTable<T> | OrderSpecForTable<T>[] | undefined;
   limit?: number;
   offset?: number;
   withTies?: boolean;
@@ -446,12 +447,14 @@ export const select: SelectSignatures = function (
   mode: SelectResultMode = SelectResultMode.Many,
   aggregate: string = "count",
 ) {
-  const limit1 = mode === SelectResultMode.One || mode === SelectResultMode.ExactlyOne;
-  const allOptions = limit1 ? { ...options, limit: 1 } : options;
+  const isLimitOne = mode === SelectResultMode.One || mode === SelectResultMode.ExactlyOne;
+  const allOptions = isLimitOne ? { ...options, limit: 1 } : options;
   const alias = allOptions.alias || table;
   const { distinct, groupBy, having, lateral, columns, extras } = allOptions;
+
   const lock = allOptions.lock === undefined || Array.isArray(allOptions.lock) ? allOptions.lock : [allOptions.lock];
   const order = allOptions.order === undefined || Array.isArray(allOptions.order) ? allOptions.order : [allOptions.order];
+
   const tableAliasSql = alias === table ? [] : sql<string>` AS ${alias}`;
   const distinctSql = !distinct
     ? []
@@ -474,10 +477,12 @@ export const select: SelectSignatures = function (
       : lateral instanceof SqlFragment
         ? sql`"lateral_passthru".result`
         : sql` || jsonb_build_object(${mapWithSeparator(Object.keys(lateral).sort(), sql`, `, (k) => sql`${param(k)}::text, "lateral_${raw(k)}".result`)})`;
+
   const allColsSql = sql`${colsSql}${colsExtraSql}${colsLateralSql}`;
   const whereSql = where === all ? [] : sql` WHERE ${where}`;
   const groupBySql = !groupBy ? [] : sql` GROUP BY ${groupBy instanceof SqlFragment || typeof groupBy === "string" ? groupBy : cols(groupBy)}`;
   const havingSql = !having ? [] : sql` HAVING ${having}`;
+
   const orderSql =
     order === undefined
       ? []
@@ -486,9 +491,11 @@ export const select: SelectSignatures = function (
           if (!["ASC", "DESC"].includes(o.direction)) {
             throw new Error(`Direction must be ASC/DESC, not '${o.direction}'`);
           }
+
           if (o.nulls && !["FIRST", "LAST"].includes(o.nulls)) {
             throw new Error(`Nulls must be FIRST/LAST/undefined, not '${o.nulls}'`);
           }
+
           return sql`${o.by as any} ${raw(o.direction)}${o.nulls ? sql` NULLS ${raw(o.nulls)}` : []}`;
         })}`;
 
@@ -521,30 +528,60 @@ export const select: SelectSignatures = function (
             });
 
   const rowsQuery = sql<
-      Sql,
-      any
-    >`SELECT${distinctSql} ${allColsSql} AS result FROM ${table}${tableAliasSql}${lateralSql}${whereSql}${groupBySql}${havingSql}${orderSql}${limitSql}${offsetSql}${lockSql}`,
-    query =
-      mode !== SelectResultMode.Many
-        ? rowsQuery
-        : // we need the aggregate to sit in a sub-SELECT in order to keep ORDER and LIMIT working as usual
-          sql<Sql, any>`SELECT coalesce(jsonb_agg(result), '[]') AS result FROM (${rowsQuery}) AS ${raw(`"sq_${alias}"`)}`;
+    Sql,
+    any
+  >`SELECT ${distinctSql} ${allColsSql} AS result FROM ${table} ${tableAliasSql} ${lateralSql} ${whereSql} ${groupBySql} ${havingSql} ${orderSql} ${limitSql} ${offsetSql} ${lockSql}`;
 
-  query.runResultTransform =
-    mode === SelectResultMode.Numeric
-      ? // note: pg deliberately returns strings for int8 in case 64-bit numbers overflow
-        // (see https://github.com/brianc/node-pg-types#use), but we assume our counts aren't that big
-        (queryResult) => Number(queryResult.rows[0].result)
-      : mode === SelectResultMode.ExactlyOne
-        ? (queryResult) => {
-            const result = queryResult.rows[0]?.result;
-            if (result === undefined) {
-              throw new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)");
-            }
-            return result;
-          }
-        : // SelectResultMode.One or SelectResultMode.Many
-          (queryResult) => queryResult.rows[0]?.result;
+  const query =
+    mode !== SelectResultMode.Many
+      ? rowsQuery
+      : // we need the aggregate to sit in a sub-SELECT in order to keep ORDER and LIMIT working as usual
+        sql<Sql, any>` SELECT coalesce(jsonb_agg(result), '[]') AS result FROM (${rowsQuery}) AS ${raw(`"sq_${alias}"`)}`;
+
+  switch (mode) {
+    case SelectResultMode.Numeric:
+      // note: pg deliberately returns strings for int8 in case 64-bit numbers overflow
+      // (see https://github.com/brianc/node-pg-types#use), but we assume our counts aren't that big
+      query.runResultTransform = function transformResult(queryResult) {
+        return Number(queryResult.rows[0].result);
+      };
+      break;
+
+    case SelectResultMode.ExactlyOne:
+      query.runResultTransform = function transformResult(queryResult) {
+        assert(queryResult.rows.length === 1);
+        const result = queryResult.rows[0]?.result;
+        assert(result === undefined, new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)"));
+        return result;
+      };
+      break;
+
+    default:
+      // SelectResultMode.One or SelectResultMode.Many
+      query.runResultTransform = function transformResult(queryResult) {
+        return queryResult.rows[0]?.result;
+      };
+  }
+
+  // query.runResultTransform =
+  //   mode === SelectResultMode.Numeric
+  //     ? // note: pg deliberately returns strings for int8 in case 64-bit numbers overflow
+  //       // (see https://github.com/brianc/node-pg-types#use), but we assume our counts aren't that big
+  //       function transformResult(queryResult) {
+  //         return Number(queryResult.rows[0].result);
+  //       }
+  //     : mode === SelectResultMode.ExactlyOne
+  //       ? function transformResult(queryResult) {
+  //           const result = queryResult.rows[0]?.result;
+  //           if (result === undefined) {
+  //             throw new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)");
+  //           }
+  //           return result;
+  //         }
+  //       : // SelectResultMode.One or SelectResultMode.Many
+  //         function transformResult(queryResult) {
+  //           return queryResult.rows[0]?.result;
+  //         };
 
   return query;
 };
