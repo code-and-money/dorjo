@@ -10,9 +10,8 @@
   ],
   "license": "MIT",
   "exports": {
-    "./dbjs": "./dist/db/exports.js",
     "./db": "./src/db/exports.ts",
-    "./generate": "./dist/generate/exports.js"
+    "./generate": "./src/generate/exports.ts"
   },
   "bin": {
     "dorjo": "dist/generate/cli.js"
@@ -24,6 +23,7 @@
     "postversion": "git push && git push --tags && npm publish"
   },
   "dependencies": {
+    "es-toolkit": "^1.43.0",
     "json-custom-numbers": "^3.1.1"
   },
   "devDependencies": {
