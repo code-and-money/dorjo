@@ -1,4 +1,6 @@
-export type NoInfer<T> = [T][T extends any ? 0 : never]; // https://github.com/Microsoft/TypeScript/issues/14829
+// https://github.com/Microsoft/TypeScript/issues/14829
+// TODO: drop for built-in type
+export type NoInfer<T> = [T][T extends any ? 0 : never];
 
 /**
  * Basic zero-padding for small, positive integers
@@ -65,12 +67,6 @@ export const completeKeysWithDefaultValue = <T extends object>(objs: T[], defaul
 
 export function completeKeysWithDefaultValueObject<T extends object>(obj: T, defaultValue: any): T {
   const record = {} as T;
-
-  // for (const key in obj) {
-  //   if (typeof obj[key] !== "undefined") {
-  //     record[key] = defaultValue;
-  //   }
-  // }
 
   for (const key in obj) {
     if (typeof obj[key] === "undefined") {

@@ -3,42 +3,35 @@ import { pad } from "./utils";
 /**
  * An ISO8601-formatted date string, such as `"2021-05-25"`.
  */
-export type DateString = `${number}-${number}-${number}`;
+export type DateString = `${number}-${number}-${number}`; // string; //
 
 /**
  * An ISO8601-formatted time string, such as `"14:41"` or `"14:41:10.249"`.
  */
-export type TimeString = `${number}:${number}${"" | `:${number}`}`;
+export type TimeString = `${number}:${number}${"" | `:${number}`}`; // string; //
 
 /**
  * A timezone suffix string, such as `"Z"`, `"-02"`, or `"+01:00"`.
  */
-export type TzSuffix = "Z" | `${"+" | "-"}${number}${"" | `:${number}`}`;
+export type TzSuffix = "Z" | `${"+" | "-"}${number}${"" | `:${number}`}`; // string; //
 
 /**
  * A time and timezone string, such as `"14:41:10+02"`. **Postgres docs advise
  * against use of this type except in legacy contexts.**
  */
-export type TimeTzString = `${TimeString}${TzSuffix}`;
+export type TimeTzString = `${TimeString}${TzSuffix}`; // string; //
 
 /**
  * An ISO8601-formatted date and time string **with no timezone**, such as
  * `"2021-05-25T14:41:10.249097"`.
  */
-export type TimestampString = `${DateString}T${TimeString}`;
+export type TimestampString = `${DateString}T${TimeString}`; // string; //
 
 /**
  * An ISO8601-formatted date, time and (numeric) timezone string, such as
  * `"2021-05-25T14:41:10.249097+01:00"`.
  */
-export type TimestampTzString = `${TimestampString}${TzSuffix}`;
-
-type TzLocalOrUTC = "UTC" | "local";
-
-interface ToDate {
-  <D extends null | TimestampTzString>(d: D, tzInterpretation?: undefined): D extends null ? null : Date;
-  <D extends null | TimestampString | DateString>(d: D, tzInterpretation: TzLocalOrUTC): D extends null ? null : Date;
-}
+export type TimestampTzString = `${TimestampString}${TzSuffix}`; // string; //
 
 /**
  * Convert a `TimestampTzString`, `TimestampString` or `DateString` to a
@@ -58,7 +51,10 @@ interface ToDate {
  * `"UTC"` if the input is to be interpreted as UTC or `"local"` if it is to be
  * interpreted in the JavaScript environment's local time
  */
-export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrUTC | undefined) {
+export function toDate(d: null, tzInterpretation?: undefined | "UTC" | "local"): null;
+export function toDate<D extends TimestampTzString>(d: D, tzInterpretation?: undefined): Date;
+export function toDate<D extends TimestampString | DateString>(d: D, tzInterpretation: "UTC" | "local"): Date;
+export function toDate(d: string | null, tzInterpretation?: "UTC" | "local" | undefined) {
   let dateMatch;
 
   if (d === null) {
@@ -85,21 +81,16 @@ export const toDate: ToDate = function (d: string, tzInterpretation?: TzLocalOrU
       return new Date(d);
     }
   }
+}
+
+type DateTimeMap = {
+  timestamptz: TimestampTzString;
+  "timestamp:UTC": TimestampString;
+  "timestamp:local": TimestampString;
+  "date:UTC": DateString;
+  "date:local": DateString;
 };
-
-type ToString = <D extends Date | null, T extends "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`>(
-  d: D,
-  stringTypeTz: T,
-) => D extends null
-  ? null
-  : {
-      timestamptz: TimestampTzString;
-      "timestamp:UTC": TimestampString;
-      "timestamp:local": TimestampString;
-      "date:UTC": DateString;
-      "date:local": DateString;
-    }[T];
-
+type DateTimeMapping<Key extends keyof DateTimeMap> = DateTimeMap[Key];
 /**
  * Convert a JavaScript `Date` to a `TimestampTzString`, `TimestampString` or
  * `DateString`.
@@ -115,7 +106,9 @@ type ToString = <D extends Date | null, T extends "timestamptz" | `${"timestamp"
  * and (except for `timestamptz`) whether to express in UTC or local time. For
  * example: `"timestamptz"`, `"timestamp:local"` or `"date:UTC"`.
  */
-export const toString: ToString = function (date: Date | null, stringTypeTz: "timestamptz" | `${"timestamp" | "date"}:${TzLocalOrUTC}`): any {
+export function toString(date: null, stringTypeTz: keyof DateTimeMap): null;
+export function toString<T extends keyof DateTimeMap>(date: Date, stringTypeTz: T): DateTimeMapping<T>;
+export function toString(date: Date | null, stringTypeTz: keyof DateTimeMap): any {
   if (date === null) {
     return null;
   }
@@ -141,4 +134,4 @@ export const toString: ToString = function (date: Date | null, stringTypeTz: "ti
   const ms = pad(utc ? date.getUTCMilliseconds() : date.getMilliseconds(), 3);
 
   return `${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}`;
-};
+}

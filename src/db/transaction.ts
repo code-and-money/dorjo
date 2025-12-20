@@ -7,7 +7,7 @@ import type { Queryable } from "./core";
 
 export enum IsolationLevel {
   // these are the only meaningful values in Postgres:
-  // see https://www.postgresql.org/docs/11/sql-set-transaction.html
+  // https://www.postgresql.org/docs/18/sql-set-transaction.html
   Serializable = "SERIALIZABLE",
   RepeatableRead = "REPEATABLE READ",
   ReadCommitted = "READ COMMITTED",
@@ -28,10 +28,7 @@ export type IsolationSatisfying<T extends IsolationLevel> = {
 }[T];
 
 export interface TxnClient<T extends IsolationLevel> extends pg.PoolClient {
-  _dorjo?: {
-    isolationLevel: T;
-    txnId: number;
-  };
+  _dorjo?: { isolationLevel: T; txnId: number };
 }
 
 export type TxnClientForSerializable = TxnClient<IsolationSatisfying<IsolationLevel.Serializable>>;
