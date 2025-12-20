@@ -4,7 +4,7 @@ import { getConfig, type SqlQuery } from "./config";
 import type { NoInfer } from "./utils";
 import type { Updatable, Whereable, Table, Column } from "@codeandmoney/dorjo/schema";
 import assert from "node:assert/strict";
-import { snakeCase } from "es-toolkit";
+import { snakeCase, toCamelCaseKeys } from "es-toolkit";
 
 const timing = typeof performance === "object" ? () => performance.now() : () => Date.now();
 
@@ -238,7 +238,7 @@ export class SqlFragment<RunResult = pg.QueryResult["rows"], Constraint = never>
    * returned — i.e. `(queryResult) => queryResult.rows` — but some shortcut functions alter this
    * in order to match their declared `RunResult` type.
    */
-  runResultTransform: (queryResult: pg.QueryResult) => any = (queryResult) => queryResult.rows;
+  runResultTransform: (queryResult: pg.QueryResult) => any = (queryResult) => toCamelCaseKeys(queryResult.rows);
 
   parentTable?: string = undefined; // used for nested shortcut select queries
   preparedName?: string = undefined; // for prepared statements
