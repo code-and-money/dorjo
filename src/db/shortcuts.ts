@@ -19,7 +19,7 @@ import { toCamelCaseKeys } from "es-toolkit";
 
 export type JsonOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
   JsonSelectableForTable<T>,
- Exclude<C[number], "*">
+  Exclude<C[number], "*">
 >;
 
 export interface SqlFragmentMap {
@@ -143,7 +143,7 @@ type UpsertReportAction = "suppress";
 type UpsertReturnableForTable<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, RA extends UpsertReportAction | undefined> = ReturningTypeForTable<T, C, E> &
   (undefined extends RA ? UpsertAction : {});
 
-type UpsertConflictTargetForTable<T extends Table> = Constraint<T> | ColumnForTable<T> | ColumnForTable<T>[];
+export type UpsertConflictTargetForTable<T extends Table> = Constraint<T> | ColumnForTable<T> | ColumnForTable<T>[];
 type UpdateColumns<T extends Table> = ColumnForTable<T> | ColumnForTable<T>[];
 
 interface UpsertOptions<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, UC extends UpdateColumns<T> | undefined, RA extends UpsertReportAction | undefined>
