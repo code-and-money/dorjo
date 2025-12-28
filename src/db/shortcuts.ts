@@ -15,10 +15,11 @@ import type {
 import { type AllType, all, type Sql, SqlFragment, sql, cols, vals, raw, param, Default } from "./core";
 import { completeKeysWithDefaultValue, completeKeysWithDefaultValueObject, mapWithSeparator, type NoInfer } from "./utils";
 import assert from "node:assert/strict";
+import { toCamelCaseKeys } from "es-toolkit";
 
 export type JsonOnlyColsForTable<T extends Table, C extends any[] /* `ColumnForTable<T>[]` gives errors here for reasons I haven't got to the bottom of */> = Pick<
   JsonSelectableForTable<T>,
-  C[number]
+  Exclude<C[number], "*">
 >;
 
 export interface SqlFragmentMap {
@@ -112,7 +113,7 @@ export const insert: InsertSignatures = function (
     query = sql`INSERT INTO ${table} (${colsSql}) VALUES ${valuesSql} RETURNING ${returningSql}${extrasSql} AS result`;
   }
 
-  query.runResultTransform = Array.isArray(values) ? (queryResult) => queryResult.rows.map((r) => r.result) : (queryResult) => queryResult.rows[0].result;
+  query.runResultTransform = toCamelCaseKeys(Array.isArray(values) ? (queryResult) => queryResult.rows.map((r) => r.result) : (queryResult) => queryResult.rows[0].result);
 
   return query;
 };
@@ -142,7 +143,7 @@ type UpsertReportAction = "suppress";
 type UpsertReturnableForTable<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, RA extends UpsertReportAction | undefined> = ReturningTypeForTable<T, C, E> &
   (undefined extends RA ? UpsertAction : {});
 
-type UpsertConflictTargetForTable<T extends Table> = Constraint<T> | ColumnForTable<T> | ColumnForTable<T>[];
+export type UpsertConflictTargetForTable<T extends Table> = Constraint<T> | ColumnForTable<T> | ColumnForTable<T>[];
 type UpdateColumns<T extends Table> = ColumnForTable<T> | ColumnForTable<T>[];
 
 interface UpsertOptions<T extends Table, C extends ColumnsOption<T>, E extends ExtrasOption<T>, UC extends UpdateColumns<T> | undefined, RA extends UpsertReportAction | undefined>
@@ -247,7 +248,7 @@ export const upsert: UpsertSignatures = function (
   const returningPart = sql`RETURNING ${returningSql}${extrasSql}${suppressReport ? [] : reportPart} AS result`;
   const query = sql`${insertPart} ${conflictPart} ${conflictActionPart} ${returningPart}`;
 
-  query.runResultTransform = Array.isArray(values) ? (queryResult) => queryResult.rows.map((r) => r.result) : (queryResult) => queryResult.rows[0]?.result;
+  query.runResultTransform = toCamelCaseKeys(Array.isArray(values) ? (queryResult) => queryResult.rows.map((r) => r.result) : (queryResult) => queryResult.rows[0]?.result);
 
   return query;
 };
@@ -280,7 +281,7 @@ export const update: UpdateSignatures = function (
     extrasSql = SqlForExtras(options?.extras),
     query = sql`UPDATE ${table} SET (${cols(values)}) = ROW(${vals(values)}) WHERE ${where} RETURNING ${returningSql}${extrasSql} AS result`;
 
-  query.runResultTransform = (queryResult) => queryResult.rows.map((r) => r.result);
+  query.runResultTransform = (queryResult) => toCamelCaseKeys(queryResult.rows.map((r) => r.result));
   return query;
 };
 
@@ -306,7 +307,7 @@ export const deletes: DeleteSignatures = function (
     extrasSql = SqlForExtras(options?.extras),
     query = sql`DELETE FROM ${table} WHERE ${where} RETURNING ${returningSql}${extrasSql} AS result`;
 
-  query.runResultTransform = (queryResult) => queryResult.rows.map((r) => r.result);
+  query.runResultTransform = (queryResult) => toCamelCaseKeys(queryResult.rows.map((r) => r.result));
   return query;
 };
 
@@ -552,14 +553,14 @@ export const select: SelectSignatures = function (
         assert(queryResult.rows.length === 1);
         const result = queryResult.rows[0]?.result;
         assert(result === undefined, new NotExactlyOneError(query, "One result expected but none returned (hint: check `.query.compile()` on this Error)"));
-        return result;
+        return toCamelCaseKeys(result);
       };
       break;
 
     default:
       // SelectResultMode.One or SelectResultMode.Many
       query.runResultTransform = function transformResult(queryResult) {
-        return queryResult.rows[0]?.result;
+        return toCamelCaseKeys(queryResult.rows[0]?.result);
       };
   }
 
